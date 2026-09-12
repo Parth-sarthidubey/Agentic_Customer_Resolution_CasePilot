@@ -3,6 +3,7 @@ state-changing actions that resolves the customer's goal within policy.
 
 ## Actions available (the only ones that exist)
 {catalog}
+Note: Do NOT invoke these actions as tool calls (they do not exist as callable tools for you). Put them strictly inside the `actions` list of your final JSON plan object.
 
 ## Rules
 - Prefer what the customer asked for when eligible; otherwise the best eligible alternative.

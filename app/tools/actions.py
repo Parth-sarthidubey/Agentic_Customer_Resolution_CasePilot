@@ -33,8 +33,11 @@ CATALOG: dict[str, dict[str, Any]] = {
 
 
 def catalog_for_prompt() -> str:
-    return "\n".join(f"- {name}({', '.join(f'{k}: {v}' for k, v in a['params'].items())}) - {a['description']}"
-                     for name, a in CATALOG.items())
+    lines = []
+    for name, a in CATALOG.items():
+        params_str = ", ".join(f'"{k}": "{v}"' for k, v in a['params'].items())
+        lines.append(f"- action: \"{name}\" (params: {{{params_str}}}) - {a['description']}")
+    return "\n".join(lines)
 
 
 def validate(actions: list[dict[str, Any]]) -> list[str]:
