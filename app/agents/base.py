@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -43,16 +44,53 @@ def _extract_json(text: str) -> dict[str, Any] | None:
     return None
 
 
-def call_tool(tool: Tool, args: dict[str, Any], tracer: Tracer) -> Any:
+def _invoke(tool: Tool, args: dict[str, Any]) -> Any:
     accepted = inspect.signature(tool.fn).parameters
     clean = {k: v for k, v in args.items() if k in accepted}
-    tracer.emit("tool_call", tool = tool.name, args = clean)
     try:
-        result = tool.fn(**clean)
+        return tool.fn(**clean)
     except Exception as exc:  # tools must never crash the agent
-        result = {"error": f"{type(exc).__name__}: {exc}"}
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
+def _clean_args(tool: Tool, args: dict[str, Any]) -> dict[str, Any]:
+    accepted = inspect.signature(tool.fn).parameters
+    return {k: v for k, v in args.items() if k in accepted}
+
+
+def call_tool(tool: Tool, args: dict[str, Any], tracer: Tracer) -> Any:
+    tracer.emit("tool_call", tool = tool.name, args = _clean_args(tool, args))
+    result = _invoke(tool, args)
     tracer.emit("tool_result", tool = tool.name, result = result)
     return result
+
+
+def call_tools(requests: list[tuple[str, Tool | None, dict[str, Any]]], tracer: Tracer) -> list[Any]:
+    """Run one round of tool calls concurrently.
+
+    A model routinely asks for several independent reads at once (order, customer, tracking,
+    policy). They do not depend on each other, so running them in parallel removes most of a
+    round's latency. Every call is announced before the batch starts, so the work log shows the
+    agent reaching for all of them at once rather than trickling.
+    """
+    for name, tool, args in requests:
+        tracer.emit("tool_call", tool = name, args = _clean_args(tool, args) if tool else args)
+
+    results: list[Any] = [None] * len(requests)
+    runnable = [(i, t, a) for i, (_, t, a) in enumerate(requests) if t is not None]
+    for i, (name, tool, _) in enumerate(requests):
+        if tool is None:
+            results[i] = {"error": f"unknown tool '{name}'"}
+
+    if runnable:
+        with ThreadPoolExecutor(max_workers = min(len(runnable), config.TOOL_PARALLELISM)) as pool:
+            futures = {pool.submit(_invoke, t, a): i for i, t, a in runnable}
+            for fut in as_completed(futures):
+                results[futures[fut]] = fut.result()
+
+    for (name, _, _), result in zip(requests, results):
+        tracer.emit("tool_result", tool = name, result = result)
+    return results
 
 
 def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], output_model: type[M]) -> M:
@@ -72,18 +110,18 @@ def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], out
         if msg.get("content") and calls:
             tracer.emit("thought", text = msg["content"][:1200], provider = provider)
         if calls:
+            requests = []
             for tc in calls:
                 name = tc["function"]["name"]
                 try:
                     args = json.loads(tc["function"].get("arguments") or "{}")
                 except json.JSONDecodeError:
                     args = {}
-                if name in by_name:
-                    result = call_tool(by_name[name], args, tracer)
-                else:
-                    result = {"error": f"unknown tool '{name}'"}
+                requests.append((name, by_name.get(name), args))
+            for tc, result in zip(calls, call_tools(requests, tracer)):
                 content = json.dumps(result, default = str)[:config.TOOL_RESULT_MAX_CHARS]
-                messages.append({"role": "tool", "tool_call_id": tc["id"], "name": name, "content": content})
+                messages.append({"role": "tool", "tool_call_id": tc["id"],
+                                 "name": tc["function"]["name"], "content": content})
             continue
         data = _extract_json(msg.get("content") or "")
         if data is not None:

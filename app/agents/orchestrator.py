@@ -8,6 +8,7 @@ No safe path -> Escalated with a full evidence summary.
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import traceback
@@ -94,18 +95,37 @@ def _process(cid: int) -> None:
     _plan_loop(cid, {"intake": it.model_dump(), "facts": facts.model_dump(), "history": []})
 
 
+def _sig(action: str, params: dict[str, Any]) -> tuple[str, str]:
+    return action, json.dumps(params or {}, sort_keys = True, default = str)
+
+
+def _already_failed(history: list[dict[str, Any]]) -> set[tuple[str, str]]:
+    """Action + parameter combinations a previous attempt was already refused."""
+    return {_sig(h["failed_action"], h.get("params") or {}) for h in history if h.get("failed_action")}
+
+
 def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]) -> Plan:
     case = db.get_case(cid)
     _stage(cid, "Resolver Agent is planning the resolution" + (" (re-planning)" if history else ""),
            "Planning", "Resolver Agent")
     plan = crew.resolver(case, it, facts, history)
     feedback = ""
+    refused = _already_failed(history)
     for round_ in range(1, config.MAX_AUDIT_ROUNDS + 1):
         if plan.decision == "escalate":
             return plan
         errors = actions.validate([a.model_dump() for a in plan.actions]) if plan.decision == "execute" else []
+        # Adapting means changing something. Re-proposing an action that was already refused with
+        # exactly these parameters would fail identically, so it never reaches the Executor.
+        repeats = [a.action for a in plan.actions if _sig(a.action, a.params) in refused]
         if errors:
             feedback = "Invalid actions: " + "; ".join(errors)
+        elif repeats:
+            feedback = (f"{', '.join(sorted(set(repeats)))} already failed on this case with exactly these "
+                        f"parameters and would fail again. Respect what the refusal said: change the "
+                        f"parameters (for example a different warehouse, or an amount within what the "
+                        f"payment can still refund) or choose a different remedy.")
+            _stage(cid, f"Rejected a repeat of the failed action: {', '.join(sorted(set(repeats)))}")
         else:
             _stage(cid, "Policy Auditor is reviewing the plan", "Policy Review", "Policy Auditor")
             review = crew.auditor(case, it, facts, plan)

@@ -165,24 +165,43 @@ def investigate(tr: Tracer, case: dict[str, Any], it: Intake) -> Facts:
 def resolve(tr: Tracer, case: dict[str, Any], it: Intake, facts: Facts, history: list[dict[str, Any]]) -> Plan:
     order = call_tool(rt.T_GET_ORDER, {"order_id": it.order_id}, tr)
     t = f"{case['subject']} {case['description']}".lower()
-    price, sku = _price(order, it.sku), it.sku
+    price = _price(order, it.sku)
+    # Fall back to the order's own item when the customer never named one, so plans never
+    # carry a null sku into an action.
+    sku = it.sku or next((i["sku"] for i in order["items"]), None)
     done = {a for h in history for a in h.get("completed", [])}
-    label = [] if "create_return_label" in done else \
+    label = [] if "create_return_label" in done or not sku else \
         [ActionStep(action = "create_return_label", params = {"order_id": order["id"], "sku": sku},
                     rationale = "Return required for items 40.00+ / wrong items (POL-DMG-1)")]
+
+    # What the payment ledger will actually allow. Re-read on every re-plan, so a refusal
+    # ("only 32.00 remains refundable") genuinely changes the next plan instead of repeating it.
+    pay = order.get("payment") or {}
+    refundable = round(max(0.0, float(pay.get("captured", order["total"])) - float(pay.get("refunded", 0.0))), 2)
 
     if facts.risk_flags:
         return Plan(decision = "escalate", resolution_type = "claims_review", summary = "Escalate to Trust & Safety.",
                     escalate_to = "Trust & Safety", policy_refs = ["POL-FRAUD-1"],
                     escalation_reason = "; ".join(facts.risk_flags))
     def refund_plan(why: str, with_label: bool) -> Plan:
+        amount = min(price, refundable)
+        if amount <= 0:
+            # Already refunded in full; asking the gateway again would only be refused.
+            return Plan(decision = "inform_only", resolution_type = "already_refunded",
+                        summary = f"{order['id']} has already been refunded in full "
+                                  f"({pay.get('refunded', 0):.2f} of {pay.get('captured', 0):.2f}); "
+                                  f"confirm that to the customer rather than refunding again.",
+                        policy_refs = ["POL-REF-1"])
+        capped = "" if amount >= price else \
+            f" Capped at the {amount:.2f} still refundable on the payment ({pay.get('refunded', 0):.2f} already returned)."
         return Plan(
-            decision = "execute", resolution_type = "refund", summary = f"Refund {price:.2f} for {sku}. {why}",
+            decision = "execute", resolution_type = "refund",
+            summary = f"Refund {amount:.2f} for {sku or order['id']}. {why}{capped}",
             actions = ([] if "refund" in done else
-                       [ActionStep(action = "refund", params = {"order_id": order["id"], "amount": price,
-                                                                "reason": it.goal}, rationale = why)])
+                       [ActionStep(action = "refund", params = {"order_id": order["id"], "amount": amount,
+                                                                "reason": it.goal}, rationale = why + capped)])
                       + (label if with_label else []),
-            expected = Expected(refund_amount = price, return_label = with_label),
+            expected = Expected(refund_amount = amount, return_label = with_label),
             policy_refs = ["POL-DMG-1", "POL-REF-1"])
 
     needs_label = price >= 40 or it.goal == "wrong_item"

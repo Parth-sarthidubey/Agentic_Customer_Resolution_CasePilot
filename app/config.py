@@ -22,12 +22,16 @@ PROMPTS_DIR = ROOT / "app" / "agents" / "prompts"
 # --- LLM providers (free tiers; tried in order, then offline rules) ----------
 LLM_MODE = os.getenv("LLM_MODE", "auto").lower()   # auto | offline
 
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
+MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "ministral-8b-latest")
+MISTRAL_BASE_URL = "https://api.mistral.ai/v1"
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
@@ -37,14 +41,23 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
 
-LLM_TIMEOUT_SECONDS = 60
-PROVIDER_COOLDOWN_SECONDS = 60
+LLM_TIMEOUT_SECONDS = 30   # free tiers stall; fail fast and retry or fail over
+# Free tiers return 503 "high demand" intermittently. That is transient, so retry the same
+# provider with backoff before failing over; only a real quota signal (429) benches it for
+# long, because a whole case finishes in well under a minute.
+TRANSIENT_RETRIES = 3
+TRANSIENT_BACKOFF_SECONDS = 1.5
+TRANSIENT_COOLDOWN_SECONDS = 5
+RATE_LIMIT_COOLDOWN_SECONDS = 60
 
 # --- Agent limits -------------------------------------------------------------
-MAX_AGENT_STEPS = 12          # tool-calling iterations per agent run
+MAX_AGENT_STEPS = 8           # tool-calling iterations per agent run
 MAX_AUDIT_ROUNDS = 2          # resolver <-> policy auditor revisions
 MAX_REPLANS = 3               # plan -> execute -> verify cycles before escalating
-TOOL_RESULT_MAX_CHARS = 6000
+# Every step resends the whole history, so a fat tool result is paid for again on each later
+# call. Free tiers meter tokens per minute (Groq: 8k/min), which is the real binding limit.
+TOOL_RESULT_MAX_CHARS = 1500
+TOOL_PARALLELISM = 6        # independent reads in one tool round run concurrently
 AUTOPILOT = os.getenv("AUTOPILOT", "true").lower() == "true"
 
 # --- Business guardrails (deterministic, never decided by the LLM) -------------
