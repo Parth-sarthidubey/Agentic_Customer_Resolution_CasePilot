@@ -1,0 +1,24 @@
+# Render Blueprint - deploys CasePilot as a free Docker web service.
+# In Render: New -> Blueprint -> pick this repo. Everything below is applied automatically.
+services:
+  - type: web
+    name: casepilot
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/status
+    autoDeploy: true
+    envVars:
+      # auto = try the free models, fall back to deterministic offline agents.
+      - key: LLM_MODE
+        value: auto
+      # SQLite lives in the container's writable temp dir and re-seeds on start.
+      - key: CASEPILOT_DATA_DIR
+        value: /tmp/casepilot
+      - key: AUTOPILOT
+        value: "true"
+      # Optional. Set in the Render dashboard; leave unset to run on offline rules.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false

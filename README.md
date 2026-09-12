@@ -1,14 +1,3 @@
----
-title: CasePilot
-emoji: 🎧
-colorFrom: indigo
-colorTo: gray
-sdk: docker
-app_port: 7860
-pinned: false
-license: mit
----
-
 # CasePilot — the autonomous customer-resolution agent
 
 > A customer writes "my kettle arrived cracked, I need a replacement by Tuesday". CasePilot reads it,

@@ -1,81 +1,92 @@
 # Deploying CasePilot
 
-The judged requirement is a **runnable or deployed version**. This guide covers the hosted demo on
-Hugging Face Spaces (free, public URL, no credit card), plus Docker and local fallbacks.
+The judged requirement is a **runnable or deployed version**. This guide covers the free hosted
+demo on Render, plus Docker and local fallbacks.
+
+> **Note on Hugging Face Spaces.** Spaces was the original target, but as of 2026 HF only allows
+> **static** Spaces on free accounts — running a Gradio or Docker Space requires a paid plan
+> ($9/month PRO). The API returns:
+> `Static Spaces are free for everyone, but hosting Gradio and Docker Spaces on free cpu-basic requires a PRO subscription.`
+> Render is used instead: genuinely free, no credit card, and it builds the same `Dockerfile`.
 
 ---
 
-## Recommended: Hugging Face Spaces (free)
+## Recommended: Render (free, no card)
 
-The `Dockerfile` already targets Spaces — it listens on port 7860 and writes its databases to
-`/tmp/casepilot`, which is the writable path in a Space container.
+Render deploys from a GitHub repo, so this also produces the public repository Round 1 asks for.
 
-### 1. Create the Space
-
-1. Sign in at <https://huggingface.co> (free, no card).
-2. Go to <https://huggingface.co/new-space>.
-3. Fill in:
-   - **Space name**: `casepilot`
-   - **License**: MIT
-   - **SDK**: **Docker** → **Blank**
-   - **Hardware**: CPU basic (free)
-   - **Visibility**: **Public**
-4. Create it. You now have a git repo at
-   `https://huggingface.co/spaces/<your-username>/casepilot`.
-
-### 2. Push the code
-
-Spaces authenticate with an access token, not your password. Create one at
-<https://huggingface.co/settings/tokens> with the **write** role.
+### 1. Push to GitHub
 
 ```bash
 cd casepilot
-git init                      # if this is not already a repo
-git add -A
-git commit -m "CasePilot: autonomous customer-resolution agent"
-
-git remote add space https://huggingface.co/spaces/<your-username>/casepilot
-git push space main           # username = your HF username, password = the write token
+gh repo create casepilot --public --source=. --remote=origin --push
 ```
 
-To avoid retyping the token, embed it in the remote instead:
+Or without the `gh` CLI: create an empty public repo at <https://github.com/new>, then
 
 ```bash
-git remote set-url space https://<username>:<hf_write_token>@huggingface.co/spaces/<username>/casepilot
+git remote add origin https://github.com/<your-username>/casepilot.git
+git push -u origin main
 ```
 
-> Keep that URL out of any public repo — it contains your token. It lives only in
-> `.git/config`, which is not committed.
+Check that no secrets went up — `.env` and `data/` are git-ignored, and `.env.example` holds only
+placeholder names.
 
-The Space rebuilds automatically on every push. Watch the **Logs** tab; the first build takes
-around 3–5 minutes. When it turns green, the demo is live at
-`https://huggingface.co/spaces/<your-username>/casepilot`.
+### 2. Create the Render service
 
-### 3. Add a free model key (optional but recommended)
+1. Sign up at <https://render.com> with **Sign in with GitHub** (free, no card).
+2. **New → Blueprint**, pick the `casepilot` repo, **Apply**.
+
+`render.yaml` in the repo root sets everything: Docker runtime, free plan, health check on
+`/api/status`, and the environment variables.
+
+If Blueprint isn't offered, use **New → Web Service** instead, pick the repo, and set
+**Language: Docker**, **Instance type: Free**. The rest is picked up from the `Dockerfile`.
+
+### 3. Wait for the build
+
+First build takes **5–10 minutes** (installing Python dependencies). Watch the **Logs** tab. When
+the status goes **Live**, the URL is `https://casepilot-xxxx.onrender.com`.
+
+### 4. Add a free model key (optional)
 
 Without a key CasePilot runs its deterministic offline agents and every scenario still completes —
 the demo cannot break on someone else's rate limit. With a key, the reasoning in the work log is
 written by a real model, which demos better.
 
-In the Space: **Settings → Variables and secrets → New secret**
+In Render: **Environment → Add Environment Variable**
 
-| Name | Value |
+| Key | Value |
 |---|---|
 | `GEMINI_API_KEY` | a free key from <https://aistudio.google.com/apikey> |
 | `GROQ_API_KEY` | *(optional fallback)* from <https://console.groq.com/keys> |
 
-Leave `LLM_MODE` unset (it defaults to `auto`: try the models, fall back to offline rules).
-The Space restarts automatically when you save a secret.
+Saving triggers a redeploy (~1 minute). The pill in the top bar shows which provider is live.
 
-### 4. Before you present
+### 5. Before you present
 
-- **Wake it up.** A free Space sleeps after ~48 hours idle and takes 30–60 seconds to wake.
-  Open the URL 10 minutes before the demo so it is warm.
-- **Reset it.** Use the desk's reset control (or `POST /api/reset`) so the board starts clean.
-- **Check the model pill** in the top bar — it shows which provider is live, or `offline rules`.
-  Either is fine; just know which one you are demoing.
-- Scenarios are safe to re-run. Each one restores its own slice of the enterprise sandbox before
+- **Wake it up.** Free Render services sleep after 15 minutes idle and take **up to a minute** to
+  cold-start. Open the URL ten minutes before you demo and leave the tab open.
+- **Reset it.** Demo cases → *Reset demo environment*, so the board starts clean.
+- **Check the model pill.** It shows the live provider, or `Offline rules`. Either is fine — just
+  know which you are demoing.
+- Scenarios are safe to re-run: each restores its own slice of the enterprise sandbox before
   filing, so clicking the same demo case twice gives the same result.
+
+---
+
+## Other free options
+
+| Platform | Card needed | Notes |
+|---|---|---|
+| **Render** | No | Recommended. Sleeps after 15 min idle. |
+| **Koyeb** | Sometimes | 1 free service; may ask for a card to verify you are human. |
+| **Google Cloud Run** | Yes | Generous free tier, scales to zero. Set `--max-instances=1` (the app keeps state in-process). |
+| **Fly.io** | Yes | Free allowance, card on file. |
+| **HF Spaces** | $9/mo | Docker Spaces need PRO. `README` frontmatter for it is no longer in the repo. |
+
+Because the app holds state in SQLite and runs agents on background threads, keep it to a
+**single instance**. Do not scale it horizontally.
 
 ---
 
@@ -86,11 +97,8 @@ docker build -t casepilot .
 docker run --rm -p 7860:7860 -e GEMINI_API_KEY=... casepilot
 ```
 
-Then open <http://localhost:7860>. `PORT` is configurable; `CASEPILOT_DATA_DIR` controls where the
-two SQLite databases are written (default `/tmp/casepilot` in the image).
-
-The same image runs unchanged on Render, Railway or Fly.io. Note that free tiers on those platforms
-cold-start slowly, which is why Spaces is the recommendation for a live demo.
+Then open <http://localhost:7860>. `PORT` is configurable (Render sets it automatically);
+`CASEPILOT_DATA_DIR` controls where the two SQLite databases are written.
 
 ---
 
@@ -103,7 +111,7 @@ uv run uvicorn app.main:app --reload --port 8000
 Desk at <http://localhost:8000>, customer portal at <http://localhost:8000/portal>.
 
 **Have this ready as a backup during the presentation.** Conference wifi fails; a local instance
-does not. It needs no API key.
+does not, and it needs no API key.
 
 ---
 
@@ -126,7 +134,7 @@ does not. It needs no API key.
 
 - **Storage is ephemeral.** Both databases live in the container's temp directory and are re-seeded
   on start. That is deliberate for a demo: every restart is a clean, known world.
-- **No secrets in the repo.** `.env` and `data/` are git-ignored, and `.env.example` holds only
-  placeholder names. Keys belong in Space secrets.
+- **No secrets in the repo.** `.env` and `data/` are git-ignored. Keys belong in the host's
+  environment settings.
 - All data is synthetic. "Kestrel Home" is a fictional retailer; the customers, orders and payments
   are generated by `app/sandbox/world.py`.
