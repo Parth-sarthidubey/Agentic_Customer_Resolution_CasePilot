@@ -37,7 +37,7 @@ flowchart TB
     end
 
     subgraph TOOLS["Tools"]
-        RT["Read tools · app/tools/read_tools.py<br/>11 read-only, no state change"]
+        RT["Read tools · app/tools/read_tools.py<br/>read-only, no state change<br/>scoped per agent"]
         AC["Action catalogue · app/tools/actions.py<br/>5 write actions, Executor only"]
     end
 
@@ -53,7 +53,7 @@ flowchart TB
         DB2[("enterprise.db<br/>systems of record + audit log")]
     end
 
-    LLM["Free-model router · app/llm.py<br/>Gemini → Groq → OpenRouter → Ollama<br/>→ deterministic offline agents"]
+    LLM["Model router · app/llm.py<br/>Bedrock → Groq → Mistral → Gemini<br/>→ deterministic offline agents"]
 
     PORTAL --> REST
     DESK --> REST
@@ -103,9 +103,13 @@ stateDiagram-v2
     Escalated --> [*]
 ```
 
-Budgets live in `app/config.py`: `MAX_AGENT_STEPS = 12` tool calls per agent run,
+Budgets live in `app/config.py`: `MAX_AGENT_STEPS = 8` tool calls per agent run,
 `MAX_AUDIT_ROUNDS = 2` resolver↔auditor revisions, `MAX_REPLANS = 3` plan→execute→verify cycles
 before the case escalates with everything it learned attached.
+
+A plan that re-proposes an action already refused with identical parameters is rejected before
+execution and sent back with the constraint (`_already_failed` in the orchestrator). Adapting has
+to mean changing something, whichever model is driving.
 
 Each case runs on its own daemon thread (`_spawn`), guarded by a `_running` set so a case can never
 be processed twice concurrently. Any uncaught exception escalates the case with a trace rather than
@@ -120,10 +124,10 @@ fallback — implemented once in `app/agents/base.py` as a ReAct-style tool-call
 
 | Agent | Job | Tools it may call | Returns |
 |---|---|---|---|
-| **Intake** | Map a plain-language message to a goal, customer and order; set priority; ask one clarifying question if the case is unworkable | `find_customer`, `get_customer`, `get_order`, `get_today`, `get_case_conversation`, `inspect_attachment` | `Intake` |
-| **Investigator** | Gather evidence across the systems of record and list which resolutions are *eligible*, each with a policy reference | `get_customer`, `get_order`, `track_shipment`, `check_inventory`, `search_policy`, `search_past_cases`, `get_today`, `payment_gateway_status` + case tools | `Facts` |
-| **Resolver** | Choose one option and emit a concrete action plan with an **expected outcome** | `get_order`, `check_inventory`, `track_shipment`, `search_policy`, `get_customer`, `get_today` | `Plan` |
-| **Policy Auditor** | Independently re-check the plan against the handbook and send it back with specific feedback | `search_policy`, `get_order`, `get_customer`, `check_inventory`, `track_shipment` | `Review` |
+| **Intake** | Map a plain-language message to a goal, customer and order; set priority; ask one clarifying question if the case is unworkable | `find_customer`, `get_order` (+ case tools when evidence exists) | `Intake` |
+| **Investigator** | Gather evidence across the systems of record and list which resolutions are *eligible*, each with a policy reference | `get_customer`, `get_order`, `track_shipment`, `check_inventory`, `search_policy`, `search_past_cases` | `Facts` |
+| **Resolver** | Choose one option and emit a concrete action plan with an **expected outcome** | `get_order`, `check_inventory`, `search_policy` | `Plan` |
+| **Policy Auditor** | Independently re-check the plan against the handbook and send it back with specific feedback | `search_policy`, `get_order`, `check_inventory` | `Review` |
 | **Communicator** | Write the customer reply and the internal note, and distil the case into a knowledge-base entry | none (writing only) | `Reply` |
 
 Schemas live in `app/agents/schemas.py`; prompts are plain Markdown in `app/agents/prompts/`, so
@@ -140,13 +144,23 @@ structurally unable to reach the Executor.
 
 ## 4. Tools
 
-**Read tools (11, `app/tools/read_tools.py`)** — none of them change state, so the model is free to
+**Read tools (`app/tools/read_tools.py`)** — none of them change state, so the model is free to
 explore. Service refusals are wrapped by `_safe()` and returned to the model *as data*, so a refusal
 is information the agent reasons about instead of a crash.
 
-`find_customer` · `get_customer` · `get_order` · `check_inventory` · `track_shipment` ·
-`payment_gateway_status` · `search_policy` · `search_past_cases` · `get_today` ·
-`get_case_conversation` · `inspect_attachment`
+Each agent carries only the tools its job needs, because tool schemas are resent on every call and
+free-tier providers meter tokens per minute:
+
+| Agent | Tools |
+|---|---|
+| Intake | `find_customer`, `get_order` |
+| Investigator | `get_customer`, `get_order`, `track_shipment`, `check_inventory`, `search_policy`, `search_past_cases` |
+| Resolver | `get_order`, `check_inventory`, `search_policy` |
+| Policy Auditor | `search_policy`, `get_order`, `check_inventory` |
+
+`get_case_conversation` and `inspect_attachment` are added only when the case actually has an
+attachment or a reply to read. Today's date is injected into every system prompt rather than costing
+a tool and a round trip. A round of tool calls runs concurrently — they are independent reads.
 
 `inspect_attachment` is multimodal: an image attachment (a photo of a damaged item) is sent to the
 vision-capable free model to be described; a text attachment is read directly. If no vision model is
@@ -234,10 +248,21 @@ The last two matter most: knowing when **not** to act, and knowing when to ask, 
 
 ## 9. Model strategy - free tiers, and it still runs with no key
 
-`app/llm.py` presents one OpenAI-compatible client over providers tried in order, with a
-60-second cooldown on any provider that fails or rate-limits:
+`app/llm.py` presents one client over providers tried in order:
 
-**Gemini (AI Studio free tier) → Groq → OpenRouter free models → local Ollama → offline agents.**
+**AWS Bedrock → Groq → Mistral → Gemini → offline agents.**
+
+Every free tier meters *tokens per minute*, not requests — Groq allows 8k/min, which a five-agent
+tool-calling pipeline can exhaust inside one case. The router is built for that reality:
+
+- transient 503s are retried with backoff; only a real 429 earns a long cooldown;
+- when every provider is cooling down it still tries the one closest to ready, rather than dropping
+  the case to offline rules;
+- a model that returns its final JSON as a rejected tool call (gpt-oss on Groq) has that answer
+  recovered from the error payload instead of failing;
+- Bedrock meters its own spend from the token counts it returns and switches itself off at
+  `BEDROCK_MAX_SPEND_USD`, falling through to the next provider. AWS Budgets actions lag by hours
+  and cannot stop a runaway loop; this can.
 
 `app/agents/offline.py` is a full deterministic rule-based implementation of all five agents against
 the same schemas. With `LLM_MODE=offline`, or no key at all, every scenario still runs end to end —
@@ -250,14 +275,14 @@ so the demo cannot fail on someone else's rate limit, and the test suite is herm
 | Element | Where | Notes |
 |---|---|---|
 | **Agent / controller** | `app/agents/orchestrator.py` | Explicit state machine with a bounded replan loop, an approval gate and per-case threading. |
-| **Tools** | `app/tools/read_tools.py`, `actions.py` | 11 read tools the model selects freely; 5 typed write actions only the Executor can run. |
+| **Tools** | `app/tools/read_tools.py`, `actions.py` | Read-only tools scoped per agent and run concurrently within a round; 5 typed write actions only the Executor can run. |
 | **External systems** | `app/sandbox/services.py` | CRM, orders, inventory per warehouse with transit times, payment gateway, carrier tracking, store credit, notifications — with real refusals, not mocks. |
 | **Memory / state** | `app/db.py`, `app/sandbox/store.py` | Case state + full agent trace; learned KB as long-term memory; independent enterprise audit log. |
 | **Retrieval** | `search_policy`, `search_past_cases` | Scored keyword retrieval over the policy handbook and resolved cases; the Communicator writes back. |
 | **Planning** | Resolver Agent | Typed multi-step plans with an explicit expected outcome; validated, then independently audited. |
 | **Evaluation / verification** | `app/sandbox/verify.py` | Objective SQL checks on the systems of record, including a `no_over_refund` invariant on every case. |
 | **Human interaction** | Portal + desk | Customers chat and attach evidence; supervisors approve or reject every action past the guardrail. |
-| **Failure handling** | Orchestrator + `app/llm.py` | Provider failover with cooldown, offline agents, tool errors returned as data, retryable errors retried idempotently, capped replans, crash → escalation with trace. |
+| **Failure handling** | Orchestrator + `app/llm.py` | Provider failover with backoff, answer recovery from malformed provider responses, a spend cap on paid inference, offline agents, tool errors returned as data, retryable errors retried idempotently, capped replans, a guard against repeating a refused action, crash → escalation with trace. |
 | **Adaptation** | World events + replan loop | Conditions change mid-plan; failures and failed verifications re-enter planning as new facts. |
 
 ---

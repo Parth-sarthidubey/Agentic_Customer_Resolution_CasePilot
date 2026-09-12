@@ -14,7 +14,7 @@ ticket desk, on **free LLMs**.
 | 📄 Problem & solution brief | [docs/BRIEF.md](docs/BRIEF.md) |
 | 🏗️ Architecture / workflow | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | 🎬 Demo script (3–5 min) | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) |
-| 🚀 Deploy (Hugging Face Spaces / Docker) | [docs/DEPLOY.md](docs/DEPLOY.md) |
+| 🚀 Deploy (Render / Docker / local) | [docs/DEPLOY.md](docs/DEPLOY.md) |
 
 ## What's inside
 
@@ -33,8 +33,8 @@ ticket desk, on **free LLMs**.
   enforced in Python, never by the model, so no prompt can talk its way past them.
 - **Long-term memory** — every resolved case becomes a knowledge-base entry the agents retrieve next
   time.
-- **A free-model router** — Gemini free tier → Groq → OpenRouter → Ollama → deterministic offline
-  rules. It works with **no API key at all**.
+- **A model router** — AWS Bedrock → Groq → Mistral → Gemini → deterministic offline rules, with
+  backoff, failover and a real-time spend cap. It works with **no API key at all**.
 
 ## The eight demo cases
 
@@ -51,25 +51,69 @@ ticket desk, on **free LLMs**.
 
 The last two are the point: knowing when *not* to act, and when to ask, is part of the job.
 
-## Quick start (about 2 minutes)
+## Setup
 
-Requires Python 3.13+ and [uv](https://docs.astral.sh/uv/).
+### Requirements
+- **Python 3.13+**
+- **[uv](https://docs.astral.sh/uv/)** for dependency management
+  (`curl -LsSf https://astral.sh/uv/install.sh | sh`, or `winget install astral-sh.uv`)
+
+### Dependencies
+All pinned in `pyproject.toml` / `uv.lock`; `uv run` installs them on first use.
+
+| Package | Why |
+|---|---|
+| `fastapi`, `uvicorn[standard]` | web API and server |
+| `pydantic` | typed agent output contracts |
+| `openai` | one client for every OpenAI-compatible provider (Groq, Mistral, Gemini, OpenRouter) |
+| `boto3` | AWS Bedrock (optional) |
+| `python-dotenv`, `python-multipart` | configuration and file uploads |
+| `pytest` *(dev)* | the end-to-end test suite |
+
+### Run it
 
 ```bash
+git clone https://github.com/Parth-sarthidubey/Agentic_Customer_Resolution_CasePilot.git
+cd Agentic_Customer_Resolution_CasePilot
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-Open <http://localhost:8000> for the desk and <http://localhost:8000/portal> for the customer
-portal. Use the **Demo cases** menu to file any of the eight cases and watch the agents work.
+- Agent desk: <http://localhost:8000>
+- Customer portal: <http://localhost:8000/portal>
 
-**No API key needed.** With no key, CasePilot runs its deterministic offline agents and every
-scenario still completes end to end. To use a free model instead, copy `.env.example` to `.env` and
-add a [Google AI Studio](https://aistudio.google.com/apikey) or [Groq](https://console.groq.com/keys)
-key.
+Use **Demo cases** in the top bar to file any of the eight cases and watch the agents work.
+**No API key is required** — with no key configured, CasePilot runs its deterministic offline
+agents and every scenario still completes end to end.
 
 ```bash
-uv run pytest        # 10 end-to-end tests, hermetic, no key required
+uv run pytest      # 10 end-to-end tests, hermetic, no key needed
 ```
+
+## Environment configuration
+
+Copy `.env.example` to `.env` and fill in whichever providers you have. Every one is optional;
+they are tried in order and fall back to offline rules.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `LLM_MODE` | `auto` | `auto` tries the providers then falls back to offline rules; `offline` never calls a model |
+| `GROQ_API_KEY` / `GROQ_MODEL` | `openai/gpt-oss-20b` | Groq free tier — fastest option ([keys](https://console.groq.com/keys)) |
+| `MISTRAL_API_KEY` / `MISTRAL_MODEL` | `ministral-8b-latest` | Mistral free tier ([keys](https://console.mistral.ai/api-keys)) |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | `gemini-flash-latest` | Google AI Studio free tier ([keys](https://aistudio.google.com/apikey)) |
+| `OPENROUTER_API_KEY` | — | OpenRouter free models |
+| `OLLAMA_BASE_URL` | — | A local model, e.g. `http://localhost:11434/v1` |
+| `BEDROCK_ENABLED` | `false` | Turn on AWS Bedrock (tried first when on) |
+| `BEDROCK_API_KEY` | — | A Bedrock API key; or `BEDROCK_ACCESS_KEY_ID` + `BEDROCK_SECRET_ACCESS_KEY` |
+| `BEDROCK_REGION` / `BEDROCK_MODEL` | `us-east-1` / `amazon.nova-lite-v1:0` | Where and what to call |
+| `BEDROCK_MAX_SPEND_USD` | `2.00` | Real-time spend ceiling; Bedrock disables itself when reached |
+| `AUTOPILOT` | `true` | Start the agents automatically when a case is filed |
+| `CASEPILOT_DATA_DIR` | `./data` | Where `desk.db` and `enterprise.db` are written |
+| `PORT` | `7860` | Port the container listens on |
+
+CasePilot never reads the machine's ambient AWS profile — Bedrock credentials must be given to it
+explicitly, so a work or SSO identity cannot be billed for it by accident.
+
+Deployment (Render, Docker, local) is covered in [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Why this is agentic, not a script
 
