@@ -232,11 +232,19 @@ def _finish(cid: int, plan: Plan, results: list[dict[str, Any]], history: list[d
 
 
 def _escalate(cid: int, team: str, reason: str) -> None:
+    case = db.get_case(cid)
     db.add_event(cid, "Orchestrator", "escalation", {"escalate_to": team, "escalation_reason": reason})
     _note(cid, "CasePilot", f"**Escalated to {team}.** {reason}\n\nAll findings are attached above so the team "
                             f"can act without re-investigating.")
-    db.add_message(cid, "agent", "CasePilot", "Thanks for your patience - a specialist from our team is reviewing "
-                                              "your case and will get back to you within 24 hours.")
+    order_ref = f" regarding order {case['order_id']}" if case.get("order_id") else ""
+    cust_name = (case.get("customer_name") or "there").split()[0]
+    msg = (f"Hi {cust_name}, we've checked your inquiry{order_ref}. "
+           f"Because your request requires review by a specialist ({reason}), "
+           f"we've escalated your ticket directly to our **{team}** team. "
+           f"A specialist is reviewing all evidence gathered and will follow up with you shortly (within 24 hours). Thank you for your patience!")
+    db.add_message(cid, "agent", "CasePilot", msg)
+    if case.get("customer_id"):
+        services.send_notification(case["customer_id"], case["number"], msg)
     _stage(cid, f"Escalated to {team}", "Escalated", team)
 
 
