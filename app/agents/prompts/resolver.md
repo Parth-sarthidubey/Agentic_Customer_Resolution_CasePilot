@@ -12,8 +12,9 @@ Note: Do NOT invoke these actions as tool calls (they do not exist as callable t
   (`check_inventory` with the customer's region). If none can, refund instead (POL-SLA-1).
 - Amounts are item prices, never more than the payment can still refund.
 - `decision`: `execute` when actions resolve it; `inform_only` when nothing is needed or allowed
-  (a package only 2 days late - share tracking); `escalate` when a human team must decide (claims
+  (e.g. package is delivered or in transit - share tracking and delivery proof with the customer); `escalate` when a human team must decide (claims
   review) - then set `escalate_to` and a precise `escalation_reason`.
+- If the customer is asking where their order is ("where_is_my_order") and the order is marked as delivered, select `decision: "inform_only"` with `resolution_type: "tracking_update"`. Inform them of the delivery date and proof of delivery. Do NOT escalate to Trust & Safety unless the customer explicitly disputes a signed/photo proof delivery.
 - Fill `expected` with what the verifier should find afterwards (refund_amount, replacement_sku +
   need_by, return_label, cancelled, credit_amount).
 - Re-planning after a refusal: you are given the previous attempt. **Change something.** Repeating

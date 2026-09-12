@@ -115,7 +115,9 @@ def investigate(tr: Tracer, case: dict[str, Any], it: Intake) -> Facts:
     if cust["claims_90d"] >= 3:
         risk.append(f"claims_90d={cust['claims_90d']} - claims review required")
     outbound = next((s for s in order["shipments"] if s["kind"] == "outbound"), None)
-    if it.goal == "where_is_my_order" and outbound and outbound["status"] == "delivered" and outbound.get("proof"):
+    t_text, _ = _customer_text(tr, case)
+    dispute_words = ("never", "not received", "didn't get", "dispute", "stolen", "missing", "haven't received", "hasn't arrived", "not arrived")
+    if it.goal == "where_is_my_order" and outbound and outbound["status"] == "delivered" and outbound.get("proof") and any(w in t_text for w in dispute_words):
         risk.append(f"carrier marked delivered with proof ({outbound['proof']}) - delivery dispute")
     pols = call_tool(rt.T_POLICY, {"query": it.goal.replace("_", " ") + " refund replacement"}, tr)
     price = _price(order, it.sku)
@@ -243,8 +245,15 @@ def resolve(tr: Tracer, case: dict[str, Any], it: Intake, facts: Facts, history:
         return refund_plan("No warehouse can deliver a replacement in time (POL-SLA-1) - refund instead.",
                            needs_label and it.goal == "damaged_item")
     if it.goal == "where_is_my_order":
+        outbound = next((s for s in order["shipments"] if s["kind"] == "outbound"), None)
+        if outbound and outbound["status"] == "delivered":
+            proof_str = f" (proof: {outbound.get('proof')})" if outbound.get("proof") else ""
+            deliv_date = outbound.get("delivered_at") or order.get("delivered_at") or "recently"
+            return Plan(decision = "inform_only", resolution_type = "tracking_update",
+                        summary = f"Order {order['id']} was delivered on {deliv_date}{proof_str}. Confirm delivery status with customer.",
+                        policy_refs = ["POL-LOST-1"])
         return Plan(decision = "inform_only", resolution_type = "tracking_update",
-                    summary = "Package not yet considered lost - share tracking.", policy_refs = ["POL-LOST-1"])
+                    summary = "Package in transit or not yet considered lost - share tracking.", policy_refs = ["POL-LOST-1"])
     refund_opt = next((o for o in facts.options if o.option.startswith("refund")), None)
     if refund_opt and refund_opt.eligible:
         returned = any(s["kind"] == "return" and s["status"] == "delivered" for s in order["shipments"])
