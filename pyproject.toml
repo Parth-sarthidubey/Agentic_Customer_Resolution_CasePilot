@@ -1,0 +1,23 @@
+[project]
+name = "casepilot"
+version = "0.1.0"
+description = "Autonomous customer-resolution agents: understand, investigate, plan, execute, verify and adapt across simulated enterprise systems."
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141.1",
+    "openai>=3.13.0",
+    "pydantic>=2.13.5",
+    "python-dotenv>=1.2.3",
+    "python-multipart>=0.0.32",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+

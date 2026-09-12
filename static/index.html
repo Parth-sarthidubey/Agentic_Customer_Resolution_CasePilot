@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CasePilot · Kestrel Home Support</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234338CA'/><path d='M9 17l5 5 9-12' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/desk.css">
+</head>
+<body>
+
+<!-- icon sprite: referenced with <svg><use href="#i-name"></svg> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="g-board"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/></g>
+    <g id="g-queue"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></g>
+    <g id="g-systems"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></g>
+    <g id="g-book"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5z"/><line x1="8" y1="7" x2="15" y2="7"/><line x1="8" y1="11" x2="15" y2="11"/></g>
+    <g id="g-warn"><path d="M12 3.5 22 20H2z"/><line x1="12" y1="10" x2="12" y2="14"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></g>
+    <g id="g-shield"><path d="M12 2.5 20 6v6c0 5-3.4 8.4-8 9.5C7.4 20.4 4 17 4 12V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></g>
+    <g id="g-check"><path d="M20 6 9 17l-5-5"/></g>
+    <g id="g-refresh"><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/><polyline points="20.5,3.5 20.5,9 15,9"/></g>
+    <g id="g-ext"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5.5A1.5 1.5 0 0 1 16.5 21h-11A1.5 1.5 0 0 1 4 19.5v-11A1.5 1.5 0 0 1 5.5 7H11"/></g>
+    <g id="g-play"><path d="M7 4.5 19 12 7 19.5z"/></g>
+    <g id="g-plus"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></g>
+    <g id="g-menu"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></g>
+    <g id="g-user"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></g>
+    <g id="g-file"><path d="M14 3H7a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 7 21h10a1.5 1.5 0 0 0 1.5-1.5V7.5z"/><path d="M14 3v4.5h4.5"/></g>
+    <g id="g-clip"><path d="M20 11.5 12.2 19.3a4.5 4.5 0 0 1-6.4-6.4l8.3-8.3a3 3 0 0 1 4.3 4.3l-8.3 8.3a1.5 1.5 0 0 1-2.1-2.1l7.5-7.5"/></g>
+    <g id="g-reset"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><polyline points="3.5,3.5 3.5,9 9,9"/></g>
+  </defs>
+</svg>
+
+<header class="topnav">
+  <button class="icon-btn" id="menu-btn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#g-menu"/></svg></button>
+  <a class="product" href="#/board">
+    <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#4338CA"/><path d="M9 17l5 5 9-12" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>CasePilot</span>
+  </a>
+  <nav class="topnav-links">
+    <a href="#/board" data-nav="board">Board</a>
+    <a href="#/queue" data-nav="queue">Queue</a>
+    <a href="#/systems" data-nav="systems">Systems</a>
+    <a href="#/knowledge" data-nav="knowledge">Knowledge</a>
+  </nav>
+  <button class="btn primary" id="create-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#g-plus"/></svg>Create</button>
+  <div class="spacer"></div>
+  <div class="dropdown">
+    <button class="btn" id="demo-btn"><svg viewBox="0 0 24 24" fill="currentColor"><use href="#g-play"/></svg>Demo cases</button>
+    <div class="dropdown-menu" id="demo-menu" hidden></div>
+  </div>
+  <a class="btn subtle" href="/portal" target="_blank">Customer portal<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#g-ext"/></svg></a>
+  <span class="model-pill" id="model-pill">…</span>
+</header>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="space">
+      <div class="space-avatar">KH</div>
+      <div>
+        <div class="space-name">Kestrel Home Support</div>
+        <div class="space-type">Customer resolution</div>
+      </div>
+    </div>
+
+    <div class="side-section">Views</div>
+    <a class="side-link" href="#/board" data-nav="board"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><use href="#g-board"/></svg>Board</a>
+    <a class="side-link" href="#/queue" data-nav="queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><use href="#g-queue"/></svg>Queue <em id="queue-count"></em></a>
+    <a class="side-link" href="#/systems" data-nav="systems"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><use href="#g-systems"/></svg>Enterprise systems</a>
+    <a class="side-link" href="#/knowledge" data-nav="knowledge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><use href="#g-book"/></svg>Policies &amp; memory</a>
+
+    <div class="side-section">Agent team</div>
+    <div id="team"></div>
+
+    <div class="side-foot">
+      <b>Guardrails.</b> Refunds over <b id="lim-refund">150</b> and store credit over
+      <b id="lim-credit">50</b> stop for a human. Enforced in code, not by the model.
+    </div>
+  </aside>
+
+  <main id="view"></main>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-card" id="modal-card"></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="/static/desk.js"></script>
+</body>
+</html>

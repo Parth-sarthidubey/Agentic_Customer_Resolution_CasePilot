@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kestrel Home · Help Centre</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink: #2B2118; --ink-2: #6B5E53; --line: #E8DFD5; --bg: #FBF7F2; --card: #FFFFFF; --accent: #B4532A; --accent-2: #8E3F1F; --soft: #F4E9DE; --ok: #2F7D4F; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 Inter, system-ui, sans-serif; }
+    [hidden] { display: none !important; }
+    header { background: var(--card); border-bottom: 1px solid var(--line); }
+    .bar { max-width: 1040px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .brand { font-family: Fraunces, Georgia, serif; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+    .brand span { color: var(--accent); }
+    .spacer { flex: 1; }
+    select, input, textarea { font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fff; width: 100%; }
+    select:focus, input:focus, textarea:focus { outline: 2px solid rgba(180, 83, 42, .25); border-color: var(--accent); }
+    .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+    .who select { width: auto; padding: 6px 10px; }
+    .hero { max-width: 1040px; margin: 0 auto; padding: 36px 20px 8px; }
+    .hero h1 { font-family: Fraunces, Georgia, serif; font-size: 34px; font-weight: 500; margin: 0 0 6px; }
+    .hero p { margin: 0; color: var(--ink-2); }
+    main { max-width: 1040px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: 1fr 1.25fr; gap: 20px; align-items: start; }
+    @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+    .card h2 { font-family: Fraunces, Georgia, serif; font-weight: 500; font-size: 20px; margin: 0 0 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 6px; color: var(--ink-2); }
+    .f { margin-bottom: 14px; }
+    textarea { min-height: 120px; resize: vertical; }
+    .btn { font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 10px 20px; cursor: pointer; background: var(--accent); color: #fff; }
+    .btn:hover { background: var(--accent-2); } .btn.ghost { background: var(--soft); color: var(--ink); }
+    .drop { border: 1.5px dashed #D6C6B6; border-radius: 12px; padding: 14px; text-align: center; color: var(--ink-2); font-size: 13px; cursor: pointer; }
+    .drop.over { background: var(--soft); border-color: var(--accent); }
+    .files { font-size: 12px; color: var(--ink-2); margin-top: 6px; }
+    .req { display: block; width: 100%; text-align: left; border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; font: inherit; color: inherit; }
+    .req:hover, .req.on { border-color: var(--accent); background: #FFFCF8; }
+    .req .t { font-weight: 600; } .req .rm { font-size: 12px; color: var(--ink-2); display: flex; gap: 8px; margin-top: 2px; }
+    .pill { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--soft); color: var(--accent-2); }
+    .pill.done { background: #E3F2E8; color: var(--ok); }
+    .thread { display: flex; flex-direction: column; gap: 10px; max-height: 52vh; overflow-y: auto; padding: 4px; }
+    .m { max-width: 85%; padding: 10px 14px; border-radius: 16px; background: var(--soft); white-space: pre-wrap; }
+    .m.me { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .m.them { border-bottom-left-radius: 4px; }
+    .m .n { font-size: 11px; opacity: .75; margin-bottom: 2px; font-weight: 600; }
+    .typing { align-self: flex-start; color: var(--ink-2); font-size: 13px; font-style: italic; }
+    .composer { display: flex; gap: 8px; margin-top: 12px; align-items: flex-end; }
+    .composer textarea { min-height: 48px; }
+    .empty { color: var(--ink-2); font-size: 14px; text-align: center; padding: 24px; }
+    .thumbs { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; } .thumbs img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+    footer { text-align: center; color: var(--ink-2); font-size: 12px; padding: 30px; }
+  </style>
+</head>
+<body>
+  <header><div class="bar"><div class="brand">Kestrel <span>Home</span></div><div class="spacer"></div>
+    <div class="who">Signed in as <select id="me"></select></div></div></header>
+  <section class="hero"><h1>How can we help?</h1><p>Tell us what happened - attach a photo if something arrived damaged. Our support assistant resolves most requests in minutes.</p></section>
+  <main>
+    <div class="card">
+      <h2>Contact support</h2>
+      <form id="f">
+        <div class="f"><label>What's this about?</label><input name="subject" required placeholder="e.g. My lamp arrived broken"></div>
+        <div class="f"><label>Tell us more</label><textarea name="description" required placeholder="Order number if you have it, what happened, and what you'd like us to do."></textarea></div>
+        <div class="f"><label>Photos or documents</label><div class="drop" id="drop">Drag files here or <u>browse</u><input type="file" id="file" multiple hidden accept="image/*,.pdf,.txt"></div><div class="files" id="files"></div></div>
+        <button class="btn">Send request</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Your requests</h2>
+      <div id="list"></div>
+      <div id="thread-wrap" hidden>
+        <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+        <div id="thread-head" style="font-weight:600;margin-bottom:8px"></div>
+        <div class="thread" id="thread"></div>
+        <div class="composer"><textarea id="reply" placeholder="Write a reply…"></textarea><button class="btn" id="send">Send</button></div>
+      </div>
+    </div>
+  </main>
+  <footer>Kestrel Home is a fictional retailer used to demonstrate CasePilot. All data is synthetic.</footer>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let me = null, open = null, files = [];
+async function api(p, o = {}) { const r = await fetch(p, o); if (!r.ok) throw new Error(await r.text()); return r.json(); }
+const FRIENDLY = { "Resolved": "Resolved", "Waiting on Customer": "Needs your reply", "Escalated": "With a specialist", "Awaiting Approval": "Being reviewed" };
+(async () => {
+  const cs = await api("/api/customers");
+  $("#me").innerHTML = cs.map((c) => `<option value="${esc(c.email)}|${esc(c.name)}">${esc(c.name)}</option>`).join("");
+  $("#me").onchange = () => { me = $("#me").value.split("|"); open = null; $("#thread-wrap").hidden = true; load(); };
+  me = $("#me").value.split("|"); load(); setInterval(load, 1500);
+})();
+const drop = $("#drop");
+drop.onclick = () => $("#file").click();
+$("#file").onchange = (e) => { files = [...files, ...e.target.files]; showFiles(); };
+drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); files = [...files, ...e.dataTransfer.files]; showFiles(); };
+function showFiles() { $("#files").textContent = files.map((f) => "📎 " + f.name).join("   "); }
+$("#f").onsubmit = async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  fd.append("customer_email", me[0]); fd.append("customer_name", me[1]); fd.append("channel", "portal");
+  files.forEach((f) => fd.append("files", f));
+  const c = await api("/api/cases", { method: "POST", body: fd });
+  e.target.reset(); files = []; showFiles(); open = c.id; load();
+};
+async function load() {
+  const all = await api("/api/cases");
+  const mine = all.filter((c) => c.customer_email === me[0]);
+  $("#list").innerHTML = mine.map((c) => `<button class="req ${c.id === open ? "on" : ""}" data-id="${c.id}"><div class="t">${esc(c.subject)}</div>
+    <div class="rm"><span>${esc(c.number)}</span><span class="pill ${c.status === "Resolved" ? "done" : ""}">${esc(FRIENDLY[c.status] || "In progress")}</span></div></button>`).join("") || `<div class="empty">No requests yet.</div>`;
+  document.querySelectorAll(".req").forEach((b) => (b.onclick = () => { open = +b.dataset.id; load(); }));
+  if (!open) return;
+  const d = await api(`/api/cases/${open}?customer_view=true`);
+  $("#thread-wrap").hidden = false;
+  $("#thread-head").textContent = `${d.case.number} · ${d.case.subject}`;
+  const th = $("#thread"), atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 40;
+  th.innerHTML = (d.attachments.length ? `<div class="thumbs">${d.attachments.map((a) => a.content_type.startsWith("image/") ? `<img src="/api/attachments/${a.id}" title="${esc(a.filename)}">` : `<span class="pill">📎 ${esc(a.filename)}</span>`).join("")}</div>` : "") +
+    d.messages.map((m) => `<div class="m ${m.sender === "customer" ? "me" : "them"}"><div class="n">${m.sender === "customer" ? "You" : "Kestrel Support"}</div>${esc(m.body)}</div>`).join("") +
+    (d.running ? `<div class="typing">Support assistant is working on your request…</div>` : "");
+  if (atBottom) th.scrollTop = th.scrollHeight;
+}
+$("#send").onclick = async () => {
+  const body = $("#reply").value.trim(); if (!body || !open) return;
+  const fd = new FormData(); fd.append("body", body); fd.append("sender", "customer");
+  await api(`/api/cases/${open}/messages`, { method: "POST", body: fd }); $("#reply").value = ""; load();
+};
+</script>
+</body>
+</html>
