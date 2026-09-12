@@ -121,11 +121,24 @@ async function load() {
   $("#thread-head").textContent = `${d.case.number} · ${d.case.subject}`;
   const th = $("#thread"), atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 40;
   const stages = events.filter((e) => e.type === "stage");
-  const liveStatus = stages.length ? stages[stages.length - 1].payload.text : "Support assistant is working on your request…";
+  const rawStatus = stages.length ? stages[stages.length - 1].payload.text : "";
+  const liveStatus = friendlyStageText(rawStatus);
   th.innerHTML = (d.attachments.length ? `<div class="thumbs">${d.attachments.map((a) => a.content_type.startsWith("image/") ? `<img src="/api/attachments/${a.id}" title="${esc(a.filename)}">` : `<span class="pill">📎 ${esc(a.filename)}</span>`).join("")}</div>` : "") +
     d.messages.map((m) => `<div class="m ${m.sender === "customer" ? "me" : "them"}"><div class="n">${m.sender === "customer" ? "You" : "Kestrel Support"}</div>${esc(m.body)}</div>`).join("") +
-    (d.running ? `<div class="typing">⚡ ${esc(liveStatus)}</div>` : "");
+    (d.running ? `<div class="typing">${esc(liveStatus)}</div>` : "");
   if (atBottom) th.scrollTop = th.scrollHeight;
+}
+function friendlyStageText(text) {
+  if (!text) return "👋 Hi! We're reviewing your message and looking into your request…";
+  const t = text.toLowerCase();
+  if (t.includes("intake") || t.includes("reading")) return "👋 Hi! We're reviewing your message and looking into your request…";
+  if (t.includes("investigator") || t.includes("checking")) return "🔍 Investigating your order, tracking shipments, and checking details…";
+  if (t.includes("planning") || t.includes("resolver")) return "✍️ Evaluating eligible options and policy guidelines…";
+  if (t.includes("policy auditor") || t.includes("policy")) return "📋 Verifying compliance and policy rules…";
+  if (t.includes("verifying") || t.includes("verifier")) return "✅ Verifying records with our systems…";
+  if (t.includes("communicator") || t.includes("writing")) return "💬 Preparing our detailed response for you…";
+  if (t.includes("escalated")) return "🤝 Forwarding your case to a support specialist…";
+  return `⚡ ${text}`;
 }
 $("#send").onclick = async () => {
   const body = $("#reply").value.trim(); if (!body || !open) return;

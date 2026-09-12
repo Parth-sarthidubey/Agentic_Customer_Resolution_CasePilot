@@ -32,12 +32,21 @@ def load_prompt(name: str) -> str:
 
 
 def _extract_json(text: str) -> dict[str, Any] | None:
-    text = re.sub(r"```(?:json)?", "", text or "")
+    if not text:
+        return None
+    clean = re.sub(r"```(?:json)?", "", text)
+    clean = re.sub(r"</?json>", "", clean)
+    try:
+        data = json.loads(clean.strip())
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
     decoder = json.JSONDecoder()
-    for i, ch in enumerate(text):
+    for i, ch in enumerate(clean):
         if ch == "{":
             try:
-                obj, _ = decoder.raw_decode(text[i:])
+                obj, _ = decoder.raw_decode(clean[i:])
                 if isinstance(obj, dict):
                     return obj
             except json.JSONDecodeError:

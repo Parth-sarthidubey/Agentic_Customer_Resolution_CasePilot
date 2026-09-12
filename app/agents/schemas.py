@@ -27,21 +27,21 @@ class Option(BaseModel):
     option: str
     eligible: bool
     policy_ref: str | None = None
-    reason: str
+    reason: str = ""
 
 
 class Facts(BaseModel):
-    findings: list[str]
-    options: list[Option]
+    findings: list[str] = Field(default_factory = list)
+    options: list[Option] = Field(default_factory = list)
     risk_flags: list[str] = Field(default_factory = list)
-    recommended: str
-    confidence: float = Field(ge = 0, le = 1)
+    recommended: str = "inform_only"
+    confidence: float = Field(default = 0.9, ge = 0, le = 1)
 
 
 class ActionStep(BaseModel):
     action: str
-    params: dict[str, Any]
-    rationale: str
+    params: dict[str, Any] = Field(default_factory = dict)
+    rationale: str = ""
 
 
 class Expected(BaseModel):
