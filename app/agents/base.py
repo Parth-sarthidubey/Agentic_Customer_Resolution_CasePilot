@@ -146,6 +146,7 @@ def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], out
         {"role": "user", "content": user},
     ]
     specs = [t.spec() for t in tools] or None
+    seen: dict[tuple[str, str], Any] = {}
     for _step in range(config.MAX_AGENT_STEPS):
         # If the last message was a JSON fix request, remove tool specs to force JSON output
         current_specs = None if (messages and messages[-1]["role"] == "user" and "not valid" in messages[-1].get("content", "")) else specs
@@ -155,15 +156,31 @@ def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], out
         if msg.get("content") and calls:
             tracer.emit("thought", text = msg["content"][:1200], provider = provider)
         if calls:
-            requests = []
-            for tc in calls:
+            requests, cached = [], {}
+            for i, tc in enumerate(calls):
                 name = tc["function"]["name"]
                 try:
                     args = json.loads(tc["function"].get("arguments") or "{}")
                 except json.JSONDecodeError:
                     args = {}
-                requests.append((name, by_name.get(name), args))
-            for tc, result in zip(calls, call_tools(requests, tracer)):
+                sig = (name, json.dumps(args, sort_keys = True, default = str))
+                if sig in seen:
+                    # A model that repeats a call it already made will keep repeating it until the
+                    # step budget is gone and the agent falls back to the rule engine. Answer from
+                    # what it already has, and say so, so it moves on.
+                    cached[i] = {"note": "identical call already made in this run - reusing the "
+                                         "earlier result; move on and answer", "result": seen[sig]}
+                else:
+                    requests.append((i, name, by_name.get(name), args, sig))
+
+            results: dict[int, Any] = dict(cached)
+            if requests:
+                fresh = call_tools([(n, t, a) for _, n, t, a, _ in requests], tracer)
+                for (i, _, _, _, sig), res in zip(requests, fresh):
+                    results[i] = res
+                    seen[sig] = res
+
+            for tc, result in zip(calls, [results[i] for i in range(len(calls))]):
                 content = json.dumps(result, default = str)[:config.TOOL_RESULT_MAX_CHARS]
                 messages.append({"role": "tool", "tool_call_id": tc["id"],
                                  "name": tc["function"]["name"], "content": content})

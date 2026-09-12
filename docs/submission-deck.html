@@ -1,0 +1,557 @@
+<title>CasePilot Submission Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+:root{
+  --ink:#0B1B2B;          /* manifest carbon */
+  --ink-2:#2D4356;
+  --ink-3:#61788C;
+  --paper:#FBFAF7;
+  --paper-2:#F2EFE9;
+  --rule:#D9D3C8;
+  --signal:#C2410C;       /* the environment-event colour: the story's hinge */
+  --signal-soft:#FDF0E7;
+  --verify:#0F766E;
+  --verify-soft:#E7F3F1;
+  --halt:#9F1239;
+  --halt-soft:#FCE9EE;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Serif 4",Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme:dark){
+    --ink:#F2EFE9; --ink-2:#C8D3DC; --ink-3:#8CA3B5;
+    --paper:#0A1622; --paper-2:#122333; --rule:#24384A;
+    --signal:#FB923C; --signal-soft:#2A1A10;
+    --verify:#5EEAD4; --verify-soft:#0D2422;
+    --halt:#FDA4AF; --halt-soft:#2B1018;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#F2EFE9; --ink-2:#C8D3DC; --ink-3:#8CA3B5;
+  --paper:#0A1622; --paper-2:#122333; --rule:#24384A;
+  --signal:#FB923C; --signal-soft:#2A1A10;
+  --verify:#5EEAD4; --verify-soft:#0D2422;
+  --halt:#FDA4AF; --halt-soft:#2B1018;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);line-height:1.55;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px;padding-left:20px;padding-right:20px;
+  display:flex;flex-direction:column;gap:26px}
+
+.slide{background:var(--paper);border:1px solid var(--rule);border-radius:2px;
+  padding:46px 52px;display:flex;flex-direction:column;gap:22px;position:relative;overflow:hidden}
+.slide::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--ink)}
+.slide.accent::before{background:var(--signal)}
+.slide.proof::before{background:var(--verify)}
+
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--signal)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,5.2vw,60px);line-height:1.02;
+  letter-spacing:-.025em;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:700;font-size:clamp(24px,3.2vw,34px);line-height:1.1;
+  letter-spacing:-.02em;margin:0;text-wrap:balance}
+h3{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:-.01em;margin:0}
+p{margin:0;max-width:68ch}
+.lede{font-size:19px;color:var(--ink-2);max-width:62ch}
+.mono{font-family:var(--mono)}
+.muted{color:var(--ink-3)}
+strong{font-weight:600}
+em.sig{font-style:normal;color:var(--signal);font-weight:600}
+
+.cols{display:grid;gap:22px}
+.c2{grid-template-columns:repeat(2,1fr)}
+.c3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:780px){.c2,.c3{grid-template-columns:1fr}}
+
+.block{display:flex;flex-direction:column;gap:7px;padding-top:14px;border-top:2px solid var(--ink)}
+.block.s{border-top-color:var(--signal)}
+.block p{font-size:14.5px;color:var(--ink-2)}
+
+dl.kv{margin:0;display:grid;grid-template-columns:auto 1fr;gap:9px 18px;align-items:baseline}
+dl.kv dt{font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+dl.kv dd{margin:0;font-size:15px}
+
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{text-align:left;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3);padding:0 12px 8px 0;border-bottom:1px solid var(--rule)}
+td{padding:10px 12px 10px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tw{overflow-x:auto}
+
+.chip{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;
+  letter-spacing:.06em;padding:2px 7px;border-radius:2px}
+.chip.s{background:var(--signal-soft);color:var(--signal)}
+.chip.v{background:var(--verify-soft);color:var(--verify)}
+.chip.h{background:var(--halt-soft);color:var(--halt)}
+
+figure{margin:0}
+svg.dia{width:100%;height:auto;max-width:100%;display:block}
+figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
+
+/* the trace: the money slide */
+.trace{display:flex;flex-direction:column;gap:0;font-family:var(--mono);font-size:12.5px;
+  border-left:2px solid var(--rule);padding-left:0}
+.tr{display:grid;grid-template-columns:90px 1fr;gap:14px;padding:7px 0 7px 16px;
+  border-left:2px solid transparent;margin-left:-2px}
+.tr .who{color:var(--ink-3);font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;padding-top:2px}
+.tr.env{border-left-color:var(--signal);background:var(--signal-soft)}
+.tr.env .who{color:var(--signal)}
+.tr.fail{border-left-color:var(--halt);background:var(--halt-soft)}
+.tr.fail .who{color:var(--halt)}
+.tr.ok{border-left-color:var(--verify)}
+.tr.ok .who{color:var(--verify)}
+.tr b{font-weight:700}
+
+.foot{display:flex;flex-wrap:wrap;gap:26px;align-items:baseline;
+  border-top:1px solid var(--rule);padding-top:16px;font-size:14px}
+.foot a{color:var(--signal);text-decoration:none;border-bottom:1px solid currentColor}
+
+@media print{
+  body{background:#fff}
+  .wrap{max-width:none;padding:0;gap:0}
+  .slide{border:0;page-break-after:always;break-after:page;min-height:96vh;padding:32px 36px;
+    justify-content:flex-start}
+  .slide:last-child{page-break-after:auto}
+  @page{size:A4 landscape;margin:12mm}
+}
+</style>
+
+<div class="wrap">
+
+<!-- 1 ───────────────────────────────── -->
+<section class="slide accent">
+  <div class="eyebrow">Tech Zephyr 4.0 · IIT Bhubaneswar · PS5</div>
+  <h1>CasePilot</h1>
+  <p class="lede">An autonomous customer-resolution agent that investigates like an analyst,
+  acts like an operator, and <em class="sig">proves its work like an auditor</em>.</p>
+  <div class="cols c3" style="margin-top:8px">
+    <div class="block"><h3>The loop</h3>
+      <p class="mono" style="font-size:13px">observe → decide → act → <b>verify</b> → adapt</p></div>
+    <div class="block"><h3>The test</h3>
+      <p>A case closes only when SQL against the systems of record agrees with what the agent promised.</p></div>
+    <div class="block s"><h3>The proof</h3>
+      <p>Stock sells out <em class="sig">mid-plan</em>. The agent re-plans, refunds, and verifies the money moved.</p></div>
+  </div>
+</section>
+
+<!-- 2 ───────────────────────────────── -->
+<section class="slide">
+  <div class="eyebrow">01 · Problem statement</div>
+  <h2>Every support case looks simple.<br>Almost none of them are.</h2>
+  <p class="lede">A customer writes: <em>“my kettle arrived cracked — can you send a replacement
+  by Tuesday? It’s a birthday gift.”</em> No order number. No product code.</p>
+  <p>To resolve that one message a human must find the customer and order, check the policy window,
+  work out whether a replacement can physically <em>reach them by Tuesday</em> and from which
+  warehouse, choose between replacement, refund, credit or escalation, execute it in systems that
+  can refuse — and confirm the money actually moved.</p>
+  <div class="cols c3">
+    <div class="block"><h3>8–15 minutes</h3><p class="muted">of skilled human work, per routine case, across five systems.</p></div>
+    <div class="block"><h3>Hours to first reply</h3><p class="muted">for an answer that could have been immediate.</p></div>
+    <div class="block s"><h3>Resists automation</h3><p class="muted">because the right answer depends on facts nobody has gathered yet.</p></div>
+  </div>
+  <dl class="kv" style="margin-top:4px">
+    <dt>Rules engines</dt><dd>break the moment reality deviates — they cannot tell “stock exists” from “stock exists but arrives too late to matter”.</dd>
+    <dt>KB chatbots</dt><dd>can <em>explain</em> the refund policy but cannot <em>issue</em> the refund, so the work still lands on a human.</dd>
+    <dt>One LLM call</dt><dd>cannot verify itself, cannot recover when an action is refused, and will confidently promise a refund that never posted.</dd>
+  </dl>
+</section>
+
+<!-- 3 ───────────────────────────────── -->
+<section class="slide">
+  <div class="eyebrow">02 · Target users</div>
+  <h2>Three people, three different needs</h2>
+  <div class="cols c3">
+    <div class="block"><h3>Support agents</h3>
+      <p>Receive a diagnosed case with evidence gathered and the action already taken — or ready for one click — instead of a raw ticket and eight browser tabs.</p></div>
+    <div class="block s"><h3>Support leads</h3>
+      <p>Keep control of the money. Approval thresholds, a queue of exactly what needs a human, and an audit trail of every action and its reason.</p></div>
+    <div class="block"><h3>Customers</h3>
+      <p>Get a resolution in seconds instead of a first reply in hours — and a straight explanation when the answer is no.</p></div>
+  </div>
+  <p class="muted" style="font-size:14px">Built on a fictional home-goods retailer, <span class="mono">Kestrel Home</span>,
+  with nine customers, twelve orders, three warehouses with real transit times, and a nine-policy handbook.</p>
+</section>
+
+<!-- 4 ───────────────────────────────── -->
+<section class="slide accent">
+  <div class="eyebrow">03 · Why this needs an agentic system</div>
+  <h2>The path is discovered, not planned</h2>
+
+  <figure>
+    <svg class="dia" viewBox="0 0 1180 260" role="img"
+      aria-label="A fixed script runs the same four steps regardless of outcome and dead-ends when an action is refused. The agent re-enters planning with the refusal as a new fact and reaches a verified resolution.">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker>
+        <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#C2410C"/></marker>
+      </defs>
+
+      <text x="0" y="16" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700"
+        letter-spacing="1.6" fill="currentColor" opacity=".55">A FIXED SCRIPT</text>
+      <g font-family="Archivo,sans-serif" font-size="12.5" fill="currentColor">
+        <rect x="0" y="30" width="132" height="40" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="66" y="55" text-anchor="middle">look up order</text>
+        <rect x="176" y="30" width="132" height="40" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="242" y="55" text-anchor="middle">check policy</text>
+        <rect x="352" y="30" width="132" height="40" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="418" y="55" text-anchor="middle">issue refund</text>
+        <rect x="528" y="30" width="132" height="40" fill="none" stroke="currentColor" stroke-width="1.4"
+          stroke-dasharray="4 3" opacity=".5"/>
+        <text x="594" y="55" text-anchor="middle" opacity=".5">reply</text>
+      </g>
+      <line x1="132" y1="50" x2="170" y2="50" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+      <line x1="308" y1="50" x2="346" y2="50" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+      <line x1="484" y1="50" x2="522" y2="50" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+      <g font-family="JetBrains Mono,monospace" font-size="11" fill="#9F1239">
+        <line x1="418" y1="74" x2="418" y2="100" stroke="#9F1239" stroke-width="1.4"/>
+        <text x="430" y="96">refused: OUT_OF_STOCK</text>
+        <text x="430" y="112" font-weight="700">dead end — a human starts over</text>
+      </g>
+
+      <line x1="0" y1="146" x2="1180" y2="146" stroke="currentColor" stroke-width="1" opacity=".2"/>
+
+      <text x="0" y="176" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700"
+        letter-spacing="1.6" fill="#C2410C">AN AGENT</text>
+      <g font-family="Archivo,sans-serif" font-size="12.5" fill="currentColor">
+        <rect x="0" y="190" width="132" height="40" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="66" y="215" text-anchor="middle">gather facts</text>
+        <rect x="176" y="190" width="132" height="40" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="242" y="215" text-anchor="middle">plan</text>
+        <rect x="352" y="190" width="132" height="40" fill="none" stroke="#C2410C" stroke-width="1.8"/>
+        <text x="418" y="215" text-anchor="middle">act</text>
+        <rect x="528" y="190" width="132" height="40" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="594" y="215" text-anchor="middle">verify</text>
+        <rect x="704" y="190" width="150" height="40" fill="none" stroke="#0F766E" stroke-width="1.8"/>
+        <text x="779" y="215" text-anchor="middle" fill="#0F766E">resolved · proven</text>
+      </g>
+      <line x1="132" y1="210" x2="170" y2="210" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+      <line x1="308" y1="210" x2="346" y2="210" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+      <line x1="484" y1="210" x2="522" y2="210" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+      <line x1="660" y1="210" x2="698" y2="210" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+      <path d="M418 234 L418 252 L242 252 L242 236" fill="none" stroke="#C2410C" stroke-width="1.8" marker-end="url(#a2)"/>
+      <text x="330" y="248" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10.5"
+        fill="#C2410C" font-weight="700">refusal becomes a new fact</text>
+      <path d="M594 234 L594 252 L470 252" fill="none" stroke="#C2410C" stroke-width="1.4" stroke-dasharray="4 3"/>
+    </svg>
+    <figcaption>The same refusal ends a script and advances an agent. That single arrow — the failed
+    action re-entering planning as evidence — is the whole difference.</figcaption>
+  </figure>
+
+  <div class="cols c2">
+    <dl class="kv">
+      <dt>Ambiguity</dt><dd>“one of my items arrived broken”, from a customer with two recent orders, is not actionable. The system must notice, ask one question, and resume.</dd>
+      <dt>Adversarial</dt><dd>stock sells out, carriers collect early, gateways return 503 — <em>during</em> the resolution.</dd>
+    </dl>
+    <dl class="kv">
+      <dt>Proof</dt><dd>“I issued the refund” is a claim. The refund in the payment ledger is a fact. Only the second closes a case.</dd>
+      <dt>Restraint</dt><dd>a fraud-flagged claim, or a refund above the limit, must stop. Not acting is part of acting correctly.</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 5 ───────────────────────────────── -->
+<section class="slide">
+  <div class="eyebrow">04 · Proposed solution</div>
+  <h2>Five specialists behind one state machine</h2>
+  <div class="tw"><table>
+    <thead><tr><th style="width:150px">Agent</th><th>Responsibility</th><th style="width:180px">Returns</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Intake</strong></td><td>Maps a plain-language message to a goal, customer and order; sets priority; asks one clarifying question when the case is genuinely unworkable.</td><td class="mono n">Intake</td></tr>
+      <tr><td><strong>Investigator</strong></td><td>Chooses its own tools across CRM, orders, inventory, shipping, the payment ledger, the policy handbook and past resolved cases. Returns which remedies are <em>actually eligible</em>, each with a policy reference.</td><td class="mono n">Facts</td></tr>
+      <tr><td><strong>Resolver</strong></td><td>Commits to one remedy and emits a typed action plan with an explicit <strong>expected outcome</strong>.</td><td class="mono n">Plan</td></tr>
+      <tr><td><strong>Policy Auditor</strong></td><td>Independently re-checks the plan against the handbook. A plan it never approves is structurally unable to reach the executor.</td><td class="mono n">Review</td></tr>
+      <tr><td><strong>Communicator</strong></td><td>Writes the customer reply and the internal note, and distils the case into a knowledge-base entry for next time.</td><td class="mono n">Reply</td></tr>
+    </tbody>
+  </table></div>
+  <div class="cols c3">
+    <div class="block"><h3>Executor</h3><p>The only code path permitted to change enterprise state. The Resolver proposes; it never executes.</p></div>
+    <div class="block proof" style="border-top-color:var(--verify)"><h3>Verifier</h3><p>Reads the systems of record back and decides whether the case may close.</p></div>
+    <div class="block s"><h3>World events</h3><p>Conditions change <em>while</em> the agent works, so adaptation is real rather than narrated.</p></div>
+  </div>
+</section>
+
+<!-- 6 ── ARCHITECTURE ───────────────── -->
+<section class="slide">
+  <div class="eyebrow">05 · System architecture</div>
+  <h2>One case, end to end</h2>
+
+  <figure>
+    <svg class="dia" viewBox="0 0 1280 690" role="img"
+      aria-label="Architecture: customer portal and agent desk feed a FastAPI layer into the orchestrator state machine, which drives five agents that call read-only tools and a typed write-action catalogue against a simulated enterprise; a verifier reads the systems of record back, a deterministic guardrail routes high-value actions to a human, and a model router falls back through four providers to deterministic offline agents.">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker>
+        <marker id="as" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#C2410C"/></marker>
+        <marker id="av" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#0F766E"/></marker>
+      </defs>
+
+      <g font-family="JetBrains Mono,monospace" font-size="9.5" font-weight="700" letter-spacing="1.2" fill="#C2410C">
+        <text x="14" y="18">HUMAN INTERACTION</text>
+        <text x="286" y="18">AGENT / CONTROLLER · PLANNING</text>
+        <text x="700" y="18">TOOLS · RETRIEVAL</text>
+        <text x="1010" y="18">EXTERNAL SYSTEMS</text>
+      </g>
+
+      <!-- A: people -->
+      <g font-family="Archivo,sans-serif" fill="currentColor">
+        <rect x="14" y="34" width="230" height="74" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="28" y="58" font-size="14" font-weight="700">Customer portal</text>
+        <text x="28" y="78" font-size="11.5" opacity=".7">files a case in plain language,</text>
+        <text x="28" y="94" font-size="11.5" opacity=".7">attaches a photo of the damage</text>
+
+        <rect x="14" y="126" width="230" height="88" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="28" y="150" font-size="14" font-weight="700">Agent desk</text>
+        <text x="28" y="170" font-size="11.5" opacity=".7">board · queue · live work log</text>
+        <text x="28" y="186" font-size="11.5" opacity=".7">systems of record · knowledge</text>
+        <text x="28" y="204" font-size="11.5" font-weight="700" fill="#C2410C">approve / reject</text>
+      </g>
+
+      <!-- FastAPI spine -->
+      <rect x="14" y="234" width="230" height="34" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 3"/>
+      <text x="129" y="256" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="11" fill="currentColor">FastAPI · app/main.py</text>
+
+      <!-- B: orchestrator -->
+      <rect x="286" y="34" width="330" height="234" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="302" y="58" font-family="Archivo,sans-serif" font-size="15" font-weight="700" fill="currentColor">Orchestrator</text>
+      <text x="302" y="76" font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor" opacity=".65">agents/orchestrator.py</text>
+      <g font-family="JetBrains Mono,monospace" font-size="11" fill="currentColor">
+        <text x="302" y="104">Triage → Investigating → Planning</text>
+        <text x="302" y="122">⇄ Policy&#160;Review → Executing</text>
+        <text x="302" y="140">→ Verifying → Resolved</text>
+      </g>
+      <rect x="302" y="156" width="298" height="46" fill="none" stroke="#C2410C" stroke-width="1.6"/>
+      <text x="314" y="175" font-family="Archivo,sans-serif" font-size="12.5" font-weight="700" fill="#C2410C">Guardrail — decided in Python</text>
+      <text x="314" y="192" font-family="JetBrains Mono,monospace" font-size="10.5" fill="#C2410C">refund &gt; 150 · credit &gt; 50 → human</text>
+      <rect x="302" y="212" width="298" height="42" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"/>
+      <text x="314" y="230" font-family="Archivo,sans-serif" font-size="12" font-weight="600" fill="currentColor">Failure handling</text>
+      <text x="314" y="246" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".75">3 re-plans · no repeat of a refused action</text>
+
+      <!-- C: agents -->
+      <rect x="286" y="300" width="330" height="150" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="302" y="324" font-family="Archivo,sans-serif" font-size="14" font-weight="700" fill="currentColor">Agent crew</text>
+      <g font-family="JetBrains Mono,monospace" font-size="11" fill="currentColor">
+        <text x="302" y="348">1 Intake</text>
+        <text x="302" y="368">2 Investigator</text>
+        <text x="302" y="388">3 Resolver</text>
+        <text x="302" y="408">4 Policy Auditor  ⇄ 3</text>
+        <text x="302" y="428">5 Communicator</text>
+      </g>
+      <text x="470" y="348" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".6">prompt + tools</text>
+      <text x="470" y="366" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".6">+ typed schema</text>
+      <text x="470" y="384" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".6">+ offline fallback</text>
+
+      <!-- D: tools -->
+      <rect x="700" y="34" width="256" height="150" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="716" y="58" font-family="Archivo,sans-serif" font-size="14" font-weight="700" fill="currentColor">Read tools</text>
+      <text x="716" y="74" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".6">scoped per agent · run concurrently</text>
+      <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor">
+        <text x="716" y="96">get_order · get_customer</text>
+        <text x="716" y="114">check_inventory · track_shipment</text>
+        <text x="716" y="132">search_policy · search_past_cases</text>
+        <text x="716" y="150">inspect_attachment (vision)</text>
+      </g>
+      <text x="716" y="172" font-family="JetBrains Mono,monospace" font-size="10" fill="#0F766E" font-weight="700">↑ RETRIEVAL: handbook + resolved cases</text>
+
+      <rect x="700" y="204" width="256" height="118" fill="none" stroke="#C2410C" stroke-width="1.6"/>
+      <text x="716" y="228" font-family="Archivo,sans-serif" font-size="14" font-weight="700" fill="#C2410C">Write actions</text>
+      <text x="716" y="244" font-family="JetBrains Mono,monospace" font-size="10" fill="#C2410C" opacity=".8">typed · Executor only</text>
+      <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor">
+        <text x="716" y="266">refund · cancel_order</text>
+        <text x="716" y="284">create_replacement</text>
+        <text x="716" y="302">create_return_label · issue_store_credit</text>
+      </g>
+
+      <!-- E: enterprise -->
+      <rect x="1010" y="34" width="256" height="288" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="1026" y="58" font-family="Archivo,sans-serif" font-size="14" font-weight="700" fill="currentColor">Simulated enterprise</text>
+      <text x="1026" y="74" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".6">enterprise.db · actions really fail</text>
+      <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor">
+        <text x="1026" y="98">CRM · orders · order_items</text>
+        <text x="1026" y="116">inventory × 3 warehouses</text>
+        <text x="1026" y="134">payments · refunds ledger</text>
+        <text x="1026" y="152">carrier tracking · store credit</text>
+        <text x="1026" y="170">policy handbook · audit log</text>
+      </g>
+      <rect x="1026" y="188" width="224" height="60" fill="none" stroke="#C2410C" stroke-width="1.6"/>
+      <text x="1038" y="208" font-family="Archivo,sans-serif" font-size="12.5" font-weight="700" fill="#C2410C">World events</text>
+      <text x="1038" y="226" font-family="JetBrains Mono,monospace" font-size="10" fill="#C2410C">stock sells out · carrier collects</text>
+      <text x="1038" y="240" font-family="JetBrains Mono,monospace" font-size="10" fill="#C2410C">gateway 503 — mid-execution</text>
+      <text x="1026" y="272" font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor" opacity=".75">OUT_OF_STOCK · EXCEEDS_CAPTURED</text>
+      <text x="1026" y="290" font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor" opacity=".75">ORDER_ALREADY_SHIPPED · 503</text>
+      <text x="1026" y="310" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".55">refusals returned to the agent as data</text>
+
+      <!-- verifier -->
+      <rect x="1010" y="348" width="256" height="102" fill="none" stroke="#0F766E" stroke-width="2"/>
+      <text x="1026" y="372" font-family="Archivo,sans-serif" font-size="14" font-weight="700" fill="#0F766E">Verifier</text>
+      <text x="1026" y="388" font-family="JetBrains Mono,monospace" font-size="10" fill="#0F766E" opacity=".85">EVALUATION — sandbox/verify.py</text>
+      <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor">
+        <text x="1026" y="410">refund_posted · order_cancelled</text>
+        <text x="1026" y="428">replacement_shipment · arrives_by</text>
+        <text x="1026" y="444">no_over_refund — every case</text>
+      </g>
+
+      <!-- memory band -->
+      <rect x="286" y="486" width="670" height="82" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="302" y="510" font-family="JetBrains Mono,monospace" font-size="9.5" font-weight="700" letter-spacing="1.2" fill="#C2410C">MEMORY / STATE</text>
+      <g font-family="JetBrains Mono,monospace" font-size="11" fill="currentColor">
+        <text x="302" y="532">desk.db — cases · messages · attachments · proposals · full agent trace</text>
+        <text x="302" y="552">learned KB — every resolved case, retrieved by the next investigation</text>
+      </g>
+
+      <!-- model router band -->
+      <rect x="1010" y="486" width="256" height="82" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 3"/>
+      <text x="1026" y="510" font-family="JetBrains Mono,monospace" font-size="9.5" font-weight="700" letter-spacing="1.2" fill="#C2410C">MODEL ROUTER</text>
+      <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor">
+        <text x="1026" y="532">Bedrock → Groq → Mistral</text>
+        <text x="1026" y="550">→ Gemini → offline rules</text>
+      </g>
+
+      <!-- flows -->
+      <line x1="129" y1="108" x2="129" y2="122" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+      <line x1="129" y1="214" x2="129" y2="230" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+      <line x1="244" y1="251" x2="282" y2="251" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="263" y="243" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" opacity=".7">case</text>
+
+      <line x1="451" y1="272" x2="451" y2="296" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="461" y="289" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" opacity=".7">runs</text>
+
+      <path d="M616 360 L660 360 L660 110 L696 110" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+      <text x="668" y="250" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" opacity=".7" transform="rotate(-90 668 250)">reads</text>
+
+      <path d="M616 236 L654 236 L654 262 L696 262" fill="none" stroke="#C2410C" stroke-width="1.8" marker-end="url(#as)"/>
+      <text x="628" y="230" font-family="JetBrains Mono,monospace" font-size="9" fill="#C2410C" font-weight="700">executes</text>
+
+      <line x1="956" y1="110" x2="1006" y2="110" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+      <line x1="956" y1="262" x2="1006" y2="262" stroke="#C2410C" stroke-width="1.8" marker-end="url(#as)"/>
+
+      <path d="M1138 322 L1138 344" fill="none" stroke="#0F766E" stroke-width="1.8" marker-end="url(#av)"/>
+      <text x="1148" y="338" font-family="JetBrains Mono,monospace" font-size="9" fill="#0F766E" font-weight="700">SQL</text>
+
+      <path d="M1010 400 L980 400 L980 470 L616 470 L616 420" fill="none" stroke="#0F766E" stroke-width="1.6" marker-end="url(#av)"/>
+      <text x="800" y="464" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#0F766E" font-weight="700">checks fail → back to planning</text>
+
+      <path d="M286 190 L262 190 L262 214" fill="none" stroke="#C2410C" stroke-width="1.8" marker-end="url(#as)"/>
+      <text x="256" y="184" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#C2410C" font-weight="700">needs a human</text>
+
+      <line x1="451" y1="450" x2="451" y2="482" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+      <path d="M956 527 L1006 527" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3"/>
+    </svg>
+    <figcaption><strong>Two databases, deliberately separate.</strong> <span class="mono">desk.db</span>
+    is the ticketing product; <span class="mono">enterprise.db</span> is the company the agent acts on.
+    The agent reaches the second only through tools — and the verifier reads it directly, so no agent
+    can close a case by <em>claiming</em> success.</figcaption>
+  </figure>
+</section>
+
+<!-- 7 ── THE MOMENT ─────────────────── -->
+<section class="slide accent">
+  <div class="eyebrow">06 · Goal → decision → action → adaptation → outcome</div>
+  <h2>The moment the world moves under the agent</h2>
+  <p class="lede">Case <span class="mono">CS-1001</span>. Not a scripted branch — the inventory row
+  genuinely changes between planning and reserving, and the service layer genuinely refuses.</p>
+
+  <div class="trace">
+    <div class="tr"><span class="who">Goal</span><span>Intake binds a message with no order number to <b>C-1001 / ORD-50001</b>, need-by <b>2026-09-15</b></span></div>
+    <div class="tr"><span class="who">Decision</span><span>Investigator: 6 tool calls → replacement <b>eligible</b> <span class="chip v">POL-SLA-1</span> · refund 38.00 <b>eligible</b> <span class="chip v">POL-DMG-1</span></span></div>
+    <div class="tr"><span class="who">Plan</span><span>Ship <b>KT-220</b> from <b>WH-EAST</b>, ETA 2026-09-14 — beats the deadline</span></div>
+    <div class="tr env"><span class="who">Environment</span><span><b>The last KT-220 in WH-EAST was sold through the marketplace channel</b></span></div>
+    <div class="tr fail"><span class="who">Refused</span><span><b>create_replacement</b> → <span class="chip h">OUT_OF_STOCK</span></span></div>
+    <div class="tr env"><span class="who">Adapt</span><span>Re-plan, attempt 2 of 3. WH-WEST <em>has</em> stock — but 6 days transit arrives <b>2026-09-17</b>, after the deadline</span></div>
+    <div class="tr"><span class="who">Action</span><span>Refund <b>38.00</b> rather than promise something late <span class="chip s">POL-DMG-1</span></span></div>
+    <div class="tr ok"><span class="who">Verified</span><span><b>refund_posted</b> expected 38.00, ledger shows 38.00 · <b>no_over_refund</b> 38.00 of 70.00 captured · <b>customer_notified</b></span></div>
+  </div>
+
+  <p class="muted" style="font-size:14px">The customer is told the truth: the replacement would have
+  arrived after their birthday, so the money went back instead. No jargon, no invented promise.</p>
+</section>
+
+<!-- 8 ───────────────────────────────── -->
+<section class="slide proof">
+  <div class="eyebrow">07 · Verification, guardrails, restraint</div>
+  <h2>Done is a fact, not a claim</h2>
+  <div class="cols c3">
+    <div class="block" style="border-top-color:var(--verify)"><h3>Verified in SQL</h3>
+      <p>Seven checks against the systems of record, including a <span class="mono">no_over_refund</span>
+      invariant on <em>every</em> case. A failed check re-enters planning — it is not a warning.</p></div>
+    <div class="block s"><h3>Guardrails in code</h3>
+      <p>Refund &gt; 150, credit &gt; 50, or a fraud flag freezes the plan for a human. The model is
+      never asked whether approval is needed, so no message can widen the limit.</p></div>
+    <div class="block"><h3>Knowing when to stop</h3>
+      <p>Two of eight demo cases end in <em>not acting</em>: an escalation with evidence, and a
+      clarifying question. Both are correct outcomes.</p></div>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th style="width:190px">Case</th><th>What goes wrong mid-plan</th><th style="width:230px">Response</th></tr></thead>
+    <tbody>
+      <tr><td>Damaged item</td><td>Last unit sells out between planning and reserving</td><td><span class="chip s">ADAPTS</span> refund, verified</td></tr>
+      <tr><td>Refund</td><td>Payment gateway returns 503</td><td><span class="chip v">RETRIES</span> same idempotency key</td></tr>
+      <tr><td>Cancellation</td><td>Carrier collects the order first</td><td><span class="chip s">RE-PLANS</span> return labels</td></tr>
+      <tr><td>Late return</td><td>41 days — outside the 30-day window</td><td><span class="chip v">GOODWILL</span> within tier limit</td></tr>
+      <tr><td>Wrong high-value item</td><td>749.00 exceeds the auto-approval limit</td><td><span class="chip s">PAUSES</span> for a supervisor</td></tr>
+      <tr><td>Lost package</td><td>Tracking 7 days past ETA</td><td><span class="chip v">RE-SHIPS</span> nearest warehouse</td></tr>
+      <tr><td>Suspicious claim</td><td>Photo proof of delivery + 4 claims in 90 days</td><td><span class="chip h">REFUSES</span> escalates with evidence</td></tr>
+      <tr><td>Vague request</td><td>Two recent orders, no item named</td><td><span class="chip h">ASKS</span> resumes on the reply</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 9 ───────────────────────────────── -->
+<section class="slide">
+  <div class="eyebrow">08 · Expected impact</div>
+  <h2>Human effort moves to where judgement is actually needed</h2>
+  <div class="tw"><table>
+    <thead><tr><th style="width:280px">Measure</th><th style="width:230px">Today</th><th>With CasePilot</th></tr></thead>
+    <tbody>
+      <tr><td>Time to first meaningful response</td><td class="n">hours</td><td class="n">seconds</td></tr>
+      <tr><td>Handling time, routine case</td><td class="n">8–15 min of human work</td><td>fully automated, or one approval click</td></tr>
+      <tr><td>Actions taken without verification</td><td class="n">most</td><td class="n">none — every case checked against the ledger</td></tr>
+      <tr><td>Policy consistency</td><td>varies by agent and by day</td><td>one handbook, independently audited every time</td></tr>
+      <tr><td>Institutional memory</td><td>lives in individual heads</td><td>a knowledge-base entry per resolved case</td></tr>
+    </tbody>
+  </table></div>
+  <div class="cols c2">
+    <div class="block"><h3>Honest about the boundary</h3>
+      <p>The enterprise systems are simulated — but simulated <em>with real behaviour</em>: constraints
+      enforced, actions genuinely refused, state persisted. Swapping in real APIs touches
+      <span class="mono">sandbox/services.py</span> alone; nothing in the agent layer assumes a simulation.</p></div>
+    <div class="block"><h3>Built for weak models</h3>
+      <p>Typed output contracts, an independent auditor, code-enforced guardrails, objective
+      verification and bounded retries. Correctness does not rest on the model being clever —
+      and a deterministic fallback completes every scenario with no API key at all.</p></div>
+  </div>
+</section>
+
+<!-- 10 ──────────────────────────────── -->
+<section class="slide accent">
+  <div class="eyebrow">09 · Run it yourself</div>
+  <h2>Deployment &amp; source</h2>
+  <dl class="kv">
+    <dt>Repository</dt><dd><a href="https://github.com/Parth-sarthidubey/Agentic_Customer_Resolution_CasePilot">github.com/Parth-sarthidubey/Agentic_Customer_Resolution_CasePilot</a></dd>
+    <dt>Hosted</dt><dd>Web application on Render — the agent desk and the customer portal, live</dd>
+    <dt>Local</dt><dd><span class="mono">uv run uvicorn app.main:app --port 8000</span> — no API key required</dd>
+    <dt>Tests</dt><dd><span class="mono">uv run pytest</span> — 10 end-to-end tests, hermetic, every scenario asserted against enterprise state</dd>
+  </dl>
+  <div class="cols c3">
+    <div class="block"><h3>Stack</h3><p>FastAPI · SQLite × 2 · vanilla JS desk with no build step · Docker</p></div>
+    <div class="block"><h3>Models</h3><p>AWS Bedrock, Groq, Mistral, Gemini — all free tiers, with a deterministic fallback beneath</p></div>
+    <div class="block s"><h3>Cost to run</h3><p class="mono">≈ $0.0025 per case, with a real-time spend cap that disables paid inference when reached</p></div>
+  </div>
+  <div class="foot">
+    <span class="mono muted">Tech Zephyr 4.0 · IIT Bhubaneswar</span>
+    <span class="mono muted">PS5 — Autonomous Customer Resolution Agent</span>
+    <span class="mono muted">All data synthetic · “Kestrel Home” is fictional</span>
+  </div>
+</section>
+
+</div>

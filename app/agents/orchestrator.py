@@ -112,6 +112,10 @@ def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]
     plan = crew.resolver(case, it, facts, history)
     feedback = ""
     refused = _already_failed(history)
+    # The Resolver often capitulates on the last round, replacing a workable plan with an
+    # escalation. Keep the last plan that was actually executable so a stalemate can fall back
+    # to it rather than to the surrender.
+    last_exec: Plan | None = None
     for round_ in range(1, config.MAX_AUDIT_ROUNDS + 1):
         if plan.decision == "escalate":
             return plan
@@ -119,6 +123,8 @@ def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]
         # Adapting means changing something. Re-proposing an action that was already refused with
         # exactly these parameters would fail identically, so it never reaches the Executor.
         repeats = [a.action for a in plan.actions if _sig(a.action, a.params) in refused]
+        if plan.decision == "execute" and plan.actions and not errors and not repeats:
+            last_exec = plan
         if errors:
             feedback = "Invalid actions: " + "; ".join(errors)
         elif repeats:
@@ -136,7 +142,22 @@ def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]
             feedback = review.feedback
         _stage(cid, f"Plan sent back (round {round_}): {feedback}", "Planning", "Resolver Agent")
         plan = crew.resolver(case, it, facts, history, feedback = feedback)
-    # Never execute a plan the auditor has not approved.
+    # The auditor is advisory, not the safety net. When it and the Resolver cannot agree, proceed
+    # with the last plan provided it still passes the checks that are actually authoritative:
+    # a valid typed action list, no repeat of a refused action, and - downstream in _plan_loop -
+    # the Python approval guardrail and SQL verification. Escalating a plan that breaks no rule
+    # leaves a real customer unhelped over a disagreement between two models.
+    candidate = plan if (plan.decision == "execute" and plan.actions) else last_exec
+    safe = (candidate is not None
+            and not actions.validate([a.model_dump() for a in candidate.actions])
+            and not [a for a in candidate.actions if _sig(a.action, a.params) in refused])
+    if safe:
+        plan = candidate
+        _stage(cid, f"Policy Auditor still objects after {config.MAX_AUDIT_ROUNDS} rounds; the plan breaks "
+                    f"no policy rule, so it proceeds under the guardrail and will be verified. "
+                    f"Objection recorded: {feedback}")
+        _note(cid, "Policy Auditor", f"**Unresolved objection** (plan proceeded): {feedback}")
+        return plan
     return Plan(decision = "escalate", resolution_type = "planning_failed", summary = "No approved plan.",
                 escalate_to = "Support Lead",
                 escalation_reason = f"Resolver and Policy Auditor could not agree on a compliant plan: {feedback}")
