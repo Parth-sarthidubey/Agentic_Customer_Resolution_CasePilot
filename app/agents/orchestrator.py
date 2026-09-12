@@ -72,6 +72,7 @@ def start(cid: int) -> bool:
 
 def _process(cid: int) -> None:
     case = db.get_case(cid)
+    cust_name = (case.get("customer_name") or "there").split()[0]
     _stage(cid, "Intake Agent is reading the case", "Triage", "Intake Agent")
     it = crew.intake(case)
     db.update_case(cid, customer_id = it.customer_id, order_id = it.order_id, goal = it.goal,

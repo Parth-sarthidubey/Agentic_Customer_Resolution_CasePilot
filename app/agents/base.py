@@ -138,7 +138,9 @@ def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], out
     ]
     specs = [t.spec() for t in tools] or None
     for _step in range(config.MAX_AGENT_STEPS):
-        msg, provider = llm.chat(messages, specs)
+        # If the last message was a JSON fix request, remove tool specs to force JSON output
+        current_specs = None if (messages and messages[-1]["role"] == "user" and "not valid" in messages[-1].get("content", "")) else specs
+        msg, provider = llm.chat(messages, current_specs)
         messages.append(msg)
         calls = msg.get("tool_calls") or []
         if msg.get("content") and calls:

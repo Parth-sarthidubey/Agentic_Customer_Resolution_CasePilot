@@ -113,13 +113,18 @@ async function load() {
     <div class="rm"><span>${esc(c.number)}</span><span class="pill ${c.status === "Resolved" ? "done" : ""}">${esc(FRIENDLY[c.status] || "In progress")}</span></div></button>`).join("") || `<div class="empty">No requests yet.</div>`;
   document.querySelectorAll(".req").forEach((b) => (b.onclick = () => { open = +b.dataset.id; load(); }));
   if (!open) return;
-  const d = await api(`/api/cases/${open}?customer_view=true`);
+  const [d, events] = await Promise.all([
+    api(`/api/cases/${open}?customer_view=true`),
+    api(`/api/cases/${open}/events`).catch(() => [])
+  ]);
   $("#thread-wrap").hidden = false;
   $("#thread-head").textContent = `${d.case.number} · ${d.case.subject}`;
   const th = $("#thread"), atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 40;
+  const stages = events.filter((e) => e.type === "stage");
+  const liveStatus = stages.length ? stages[stages.length - 1].payload.text : "Support assistant is working on your request…";
   th.innerHTML = (d.attachments.length ? `<div class="thumbs">${d.attachments.map((a) => a.content_type.startsWith("image/") ? `<img src="/api/attachments/${a.id}" title="${esc(a.filename)}">` : `<span class="pill">📎 ${esc(a.filename)}</span>`).join("")}</div>` : "") +
     d.messages.map((m) => `<div class="m ${m.sender === "customer" ? "me" : "them"}"><div class="n">${m.sender === "customer" ? "You" : "Kestrel Support"}</div>${esc(m.body)}</div>`).join("") +
-    (d.running ? `<div class="typing">Support assistant is working on your request…</div>` : "");
+    (d.running ? `<div class="typing">⚡ ${esc(liveStatus)}</div>` : "");
   if (atBottom) th.scrollTop = th.scrollHeight;
 }
 $("#send").onclick = async () => {
