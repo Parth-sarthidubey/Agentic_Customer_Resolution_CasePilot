@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app import config, db, llm, scenarios
+from app import bedrock, config, db, llm, scenarios
 from app.agents import orchestrator
 from app.sandbox import policy, store
 
@@ -67,8 +67,11 @@ def portal() -> FileResponse:
 
 @app.get("/api/status")
 def status() -> dict:
-    return {"llm": llm.status(), "autopilot": config.AUTOPILOT,
-            "limits": {"auto_refund": config.AUTO_REFUND_LIMIT, "auto_credit": config.AUTO_CREDIT_LIMIT}}
+    out = {"llm": llm.status(), "autopilot": config.AUTOPILOT,
+           "limits": {"auto_refund": config.AUTO_REFUND_LIMIT, "auto_credit": config.AUTO_CREDIT_LIMIT}}
+    if config.BEDROCK_ENABLED:
+        out["bedrock_spend"] = bedrock.spend()
+    return out
 
 
 # --- Cases ------------------------------------------------------------------------------

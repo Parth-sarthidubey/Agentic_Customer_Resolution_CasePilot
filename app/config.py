@@ -28,9 +28,19 @@ BEDROCK_ENABLED = os.getenv("BEDROCK_ENABLED", "").lower() in ("1", "true", "yes
 BEDROCK_REGION = os.getenv("BEDROCK_REGION", "us-east-1")
 BEDROCK_MODEL = os.getenv("BEDROCK_MODEL", "amazon.nova-lite-v1:0")
 # CasePilot's own credentials, never the machine's ambient AWS identity - see app/bedrock.py.
+# Either a Bedrock API key (simplest) or an access-key pair.
+BEDROCK_API_KEY = os.getenv("BEDROCK_API_KEY", "")
 BEDROCK_ACCESS_KEY_ID = os.getenv("BEDROCK_ACCESS_KEY_ID", "")
 BEDROCK_SECRET_ACCESS_KEY = os.getenv("BEDROCK_SECRET_ACCESS_KEY", "")
 BEDROCK_SESSION_TOKEN = os.getenv("BEDROCK_SESSION_TOKEN", "")
+
+# Real-time spend ceiling. AWS Budgets actions lag by hours, so they cannot stop a runaway
+# loop; this can, because Bedrock reports exact token usage on every response. When the cap is
+# reached Bedrock switches off and the router falls through to the other providers.
+BEDROCK_MAX_SPEND_USD = float(os.getenv("BEDROCK_MAX_SPEND_USD", "2.00"))
+# USD per 1000 tokens (input, output). Defaults are Amazon Nova Lite list prices.
+BEDROCK_PRICE_IN_PER_1K = float(os.getenv("BEDROCK_PRICE_IN_PER_1K", "0.00006"))
+BEDROCK_PRICE_OUT_PER_1K = float(os.getenv("BEDROCK_PRICE_OUT_PER_1K", "0.00024"))
 
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
 MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "ministral-8b-latest")

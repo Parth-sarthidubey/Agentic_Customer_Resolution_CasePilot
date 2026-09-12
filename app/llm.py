@@ -72,6 +72,8 @@ _bedrock_state: bool | None = None
 
 def _bedrock_ready() -> bool:
     global _bedrock_state
+    if bedrock.capped():
+        return False
     if _bedrock_state is None:
         _bedrock_state = config.LLM_MODE != "offline" and bedrock.available()
         if _bedrock_state:

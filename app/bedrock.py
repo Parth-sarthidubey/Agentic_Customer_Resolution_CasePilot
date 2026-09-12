@@ -13,22 +13,59 @@ agents can actually run.
 from __future__ import annotations
 
 import json
+import logging
+import os
 import threading
 from typing import Any
 
 from app import config
 
+log = logging.getLogger(__name__)
+
 _client_lock = threading.Lock()
 _client: Any = None
+
+_spend_lock = threading.Lock()
+_spend = {"usd": 0.0, "input_tokens": 0, "output_tokens": 0, "calls": 0, "capped": False}
 
 
 class BedrockUnavailable(RuntimeError):
     pass
 
 
+def spend() -> dict[str, Any]:
+    with _spend_lock:
+        return {**_spend, "cap_usd": config.BEDROCK_MAX_SPEND_USD}
+
+
+def _record(usage: dict[str, Any]) -> None:
+    """Meter a call and trip the cap once the ceiling is crossed."""
+    tin = int(usage.get("inputTokens") or 0)
+    tout = int(usage.get("outputTokens") or 0)
+    cost = (tin / 1000) * config.BEDROCK_PRICE_IN_PER_1K + (tout / 1000) * config.BEDROCK_PRICE_OUT_PER_1K
+    with _spend_lock:
+        _spend["input_tokens"] += tin
+        _spend["output_tokens"] += tout
+        _spend["calls"] += 1
+        _spend["usd"] += cost
+        if not _spend["capped"] and _spend["usd"] >= config.BEDROCK_MAX_SPEND_USD:
+            _spend["capped"] = True
+            log.warning("bedrock spend cap reached (%.4f USD over %d calls) - disabling bedrock",
+                        _spend["usd"], _spend["calls"])
+
+
+def capped() -> bool:
+    with _spend_lock:
+        return bool(_spend["capped"])
+
+
+def _has_credentials() -> bool:
+    return bool(config.BEDROCK_API_KEY or (config.BEDROCK_ACCESS_KEY_ID and config.BEDROCK_SECRET_ACCESS_KEY))
+
+
 def available() -> bool:
-    """True when Bedrock is switched on and its own credentials are present."""
-    if not (config.BEDROCK_ENABLED and config.BEDROCK_ACCESS_KEY_ID and config.BEDROCK_SECRET_ACCESS_KEY):
+    """True when Bedrock is switched on, has its own credentials, and is under its spend cap."""
+    if not (config.BEDROCK_ENABLED and _has_credentials()) or capped():
         return False
     try:
         get_client()
@@ -48,16 +85,24 @@ def get_client() -> Any:
     global _client
     with _client_lock:
         if _client is None:
-            if not (config.BEDROCK_ACCESS_KEY_ID and config.BEDROCK_SECRET_ACCESS_KEY):
-                raise BedrockUnavailable("BEDROCK_ACCESS_KEY_ID / BEDROCK_SECRET_ACCESS_KEY are not set")
+            if not _has_credentials():
+                raise BedrockUnavailable("set BEDROCK_API_KEY, or BEDROCK_ACCESS_KEY_ID + "
+                                         "BEDROCK_SECRET_ACCESS_KEY")
             import boto3  # imported lazily so the app runs without AWS installed/configured
-            _client = boto3.client(
-                "bedrock-runtime",
-                region_name = config.BEDROCK_REGION,
-                aws_access_key_id = config.BEDROCK_ACCESS_KEY_ID,
-                aws_secret_access_key = config.BEDROCK_SECRET_ACCESS_KEY,
-                aws_session_token = config.BEDROCK_SESSION_TOKEN or None,
-            )
+            if config.BEDROCK_API_KEY:
+                # boto3 accepts a Bedrock API key only through this variable; it cannot be passed
+                # to the client (boto/boto3#4723). Set it here rather than relying on the shell,
+                # so the value always comes from CasePilot's own configuration.
+                os.environ["AWS_BEARER_TOKEN_BEDROCK"] = config.BEDROCK_API_KEY
+                _client = boto3.client("bedrock-runtime", region_name = config.BEDROCK_REGION)
+            else:
+                _client = boto3.client(
+                    "bedrock-runtime",
+                    region_name = config.BEDROCK_REGION,
+                    aws_access_key_id = config.BEDROCK_ACCESS_KEY_ID,
+                    aws_secret_access_key = config.BEDROCK_SECRET_ACCESS_KEY,
+                    aws_session_token = config.BEDROCK_SESSION_TOKEN or None,
+                )
         return _client
 
 
@@ -135,7 +180,11 @@ def chat(messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = No
     if tool_config:
         params["toolConfig"] = tool_config
 
+    if capped():
+        raise BedrockUnavailable(f"spend cap of ${config.BEDROCK_MAX_SPEND_USD:.2f} reached")
+
     resp = get_client().converse(**params)
+    _record(resp.get("usage") or {})
     content = (resp.get("output") or {}).get("message", {}).get("content", []) or []
 
     text_parts, tool_calls = [], []
