@@ -81,7 +81,7 @@ def call_tools(requests: list[tuple[str, Tool | None, dict[str, Any]]], tracer: 
     runnable = [(i, t, a) for i, (_, t, a) in enumerate(requests) if t is not None]
     for i, (name, tool, _) in enumerate(requests):
         if tool is None:
-            results[i] = {"error": f"unknown tool '{name}'"}
+            results[i] = {"error": f"unknown tool '{name}'. Do NOT call actions (like '{name}') as tool calls! Actions are not executable tools for you; place them strictly inside the 'actions' list of your final JSON response plan."}
 
     if runnable:
         with ThreadPoolExecutor(max_workers = min(len(runnable), config.TOOL_PARALLELISM)) as pool:
