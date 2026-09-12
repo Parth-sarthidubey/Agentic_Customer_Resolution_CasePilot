@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from app import db
 from app.agents import offline
 from app.agents.base import load_prompt, run_agent
 from app.agents.schemas import Facts, Intake, Plan, Reply, Review
@@ -21,15 +22,27 @@ def _case_view(c: dict[str, Any]) -> dict[str, Any]:
     return {k: c.get(k) for k in keys}
 
 
+def _evidence_tools(case: dict[str, Any]) -> list[Any]:
+    """Conversation/attachment tools only when there is something to read.
+
+    Their schemas cost tokens on every call of the run, and the opening message is already in
+    the prompt, so a plain single-message case does not need them.
+    """
+    cid = case["id"]
+    if db.attachments(cid) or len(db.messages(cid, include_internal = False)) > 1:
+        return rt.case_tools(cid)
+    return []
+
+
 def intake(case: dict[str, Any]) -> Intake:
-    tools = rt.case_tools(case["id"]) + [rt.T_FIND_CUSTOMER, rt.T_GET_CUSTOMER, rt.T_GET_ORDER, rt.T_TODAY]
+    tools = rt.INTAKE_TOOLS + _evidence_tools(case)
     return run_agent(case["id"], "Intake Agent", load_prompt("intake"), f"Case:\n{_j(_case_view(case))}",
                      tools, Intake, lambda tr: offline.intake(tr, case))
 
 
 def investigator(case: dict[str, Any], it: Intake) -> Facts:
     user = f"Case:\n{_j(_case_view(case))}\n\nIntake:\n{_j(it.model_dump())}"
-    tools = rt.INVESTIGATION_TOOLS + rt.case_tools(case["id"])
+    tools = rt.INVESTIGATION_TOOLS + _evidence_tools(case)
     return run_agent(case["id"], "Investigator Agent", load_prompt("investigator"), user, tools, Facts,
                      lambda tr: offline.investigate(tr, case, it))
 

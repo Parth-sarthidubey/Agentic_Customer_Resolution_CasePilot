@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Autonomous customer-resolution agents: understand, investigate, plan, execute, verify and adapt across simulated enterprise systems."
 requires-python = ">=3.13"
 dependencies = [
+    "boto3>=1.43.93",
     "fastapi>=0.141.1",
     "openai>=3.13.0",
     "pydantic>=2.13.5",

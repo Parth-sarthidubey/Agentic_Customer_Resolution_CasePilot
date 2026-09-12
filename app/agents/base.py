@@ -6,6 +6,7 @@ import inspect
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import date
 from typing import Any, Callable, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -93,13 +94,46 @@ def call_tools(requests: list[tuple[str, Tool | None, dict[str, Any]]], tracer: 
     return results
 
 
+def _schema_hint(model: type[BaseModel]) -> str:
+    """Compact field list for the prompt.
+
+    The full JSON schema is resent on every call, so it is one of the largest fixed costs in a
+    run. Pretty-printing it and repeating pydantic's boilerplate buys nothing - the model needs
+    the field names, their types and any fixed choices.
+    """
+    schema = model.model_json_schema()
+    defs = schema.get("$defs", {})
+
+    def describe(spec: dict[str, Any]) -> str:
+        if "$ref" in spec:
+            spec = defs.get(spec["$ref"].rsplit("/", 1)[-1], {})
+        if spec.get("enum"):
+            return "|".join(str(v) for v in spec["enum"])
+        for key in ("anyOf", "oneOf"):
+            if key in spec:
+                parts = [describe(s) for s in spec[key] if s.get("type") != "null"]
+                return (parts[0] if parts else "string") + "?"
+        t = spec.get("type", "string")
+        if t == "array":
+            return f"[{describe(spec.get('items') or {})}]"
+        if t == "object":
+            return "object"
+        return t
+
+    lines = []
+    for name, spec in (schema.get("properties") or {}).items():
+        note = spec.get("description")
+        lines.append(f"{name}: {describe(spec)}" + (f"  # {note}" if note else ""))
+    return "\n".join(lines)
+
+
 def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], output_model: type[M]) -> M:
     """ReAct-style loop: the model calls tools until it replies with JSON matching output_model."""
     by_name = {t.name: t for t in tools}
-    schema_hint = json.dumps(output_model.model_json_schema().get("properties", {}), indent = 1)
     messages: list[dict[str, Any]] = [
-        {"role": "system", "content": f"{system}\n\n## Output\nWhen finished, reply with ONLY one JSON object "
-                                      f"with these fields (no prose, no markdown):\n{schema_hint}"},
+        {"role": "system", "content": f"{system}\n\nToday is {date.today().isoformat()}.\n\n## Output\n"
+                                      f"When finished, reply with ONLY one JSON object with these fields "
+                                      f"(no prose, no markdown):\n{_schema_hint(output_model)}"},
         {"role": "user", "content": user},
     ]
     specs = [t.spec() for t in tools] or None

@@ -79,9 +79,12 @@ def _past_cases(query: str) -> list[dict[str, Any]]:
 T_PAST = Tool("search_past_cases", "Search resolved past cases (learned memory) for similar situations.",
               _obj({"query": S}, ["query"]), _past_cases)
 
-INVESTIGATION_TOOLS = [T_GET_CUSTOMER, T_GET_ORDER, T_TRACK, T_INVENTORY, T_POLICY, T_PAST, T_TODAY, T_GATEWAY]
-PLANNING_TOOLS = [T_GET_ORDER, T_INVENTORY, T_TRACK, T_POLICY, T_GET_CUSTOMER, T_TODAY]
-AUDIT_TOOLS = [T_POLICY, T_GET_ORDER, T_GET_CUSTOMER, T_INVENTORY, T_TRACK]
+# Tool schemas are resent on every call, so each agent carries only what its job needs.
+# Today's date is injected into every system prompt instead of costing a tool and a round trip.
+INTAKE_TOOLS = [T_FIND_CUSTOMER, T_GET_ORDER]
+INVESTIGATION_TOOLS = [T_GET_CUSTOMER, T_GET_ORDER, T_TRACK, T_INVENTORY, T_POLICY, T_PAST]
+PLANNING_TOOLS = [T_GET_ORDER, T_INVENTORY, T_POLICY]
+AUDIT_TOOLS = [T_POLICY, T_GET_ORDER, T_INVENTORY]
 
 
 # --- Case-scoped tools (conversation + attachments) ---------------------------------------

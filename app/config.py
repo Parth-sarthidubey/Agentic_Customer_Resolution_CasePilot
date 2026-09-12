@@ -22,6 +22,16 @@ PROMPTS_DIR = ROOT / "app" / "agents" / "prompts"
 # --- LLM providers (free tiers; tried in order, then offline rules) ----------
 LLM_MODE = os.getenv("LLM_MODE", "auto").lower()   # auto | offline
 
+# AWS Bedrock. Unlike the free tiers it has no tokens-per-minute ceiling worth worrying about,
+# so it is tried first when credentials are present. Costs fractions of a cent per case.
+BEDROCK_ENABLED = os.getenv("BEDROCK_ENABLED", "").lower() in ("1", "true", "yes")
+BEDROCK_REGION = os.getenv("BEDROCK_REGION", "us-east-1")
+BEDROCK_MODEL = os.getenv("BEDROCK_MODEL", "amazon.nova-lite-v1:0")
+# CasePilot's own credentials, never the machine's ambient AWS identity - see app/bedrock.py.
+BEDROCK_ACCESS_KEY_ID = os.getenv("BEDROCK_ACCESS_KEY_ID", "")
+BEDROCK_SECRET_ACCESS_KEY = os.getenv("BEDROCK_SECRET_ACCESS_KEY", "")
+BEDROCK_SESSION_TOKEN = os.getenv("BEDROCK_SESSION_TOKEN", "")
+
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
 MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "ministral-8b-latest")
 MISTRAL_BASE_URL = "https://api.mistral.ai/v1"

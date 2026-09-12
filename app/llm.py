@@ -19,7 +19,7 @@ from typing import Any
 import openai
 from openai import OpenAI
 
-from app import config
+from app import bedrock, config
 
 log = logging.getLogger(__name__)
 
@@ -67,13 +67,27 @@ def _configured() -> list[Provider]:
 
 PROVIDERS = _configured()
 _lock = threading.Lock()
+_bedrock_state: bool | None = None
+
+
+def _bedrock_ready() -> bool:
+    global _bedrock_state
+    if _bedrock_state is None:
+        _bedrock_state = config.LLM_MODE != "offline" and bedrock.available()
+        if _bedrock_state:
+            log.info("bedrock enabled: %s in %s", config.BEDROCK_MODEL, config.BEDROCK_REGION)
+    return _bedrock_state
 
 
 def status() -> dict[str, Any]:
-    if not PROVIDERS:
+    chain = []
+    if _bedrock_ready():
+        chain.append({"name": "bedrock", "model": config.BEDROCK_MODEL, "cooling_down": False})
+    chain += [{"name": p.name, "model": p.model, "cooling_down": p.cooldown_until > time.time()}
+              for p in PROVIDERS]
+    if not chain:
         return {"mode": "offline", "providers": []}
-    return {"mode": "llm", "providers": [{"name": p.name, "model": p.model,
-                                          "cooling_down": p.cooldown_until > time.time()} for p in PROVIDERS]}
+    return {"mode": "llm", "providers": chain}
 
 
 def _sanitize(messages: list[dict[str, Any]], provider: str) -> list[dict[str, Any]]:
@@ -136,6 +150,16 @@ def _usable() -> list[Provider]:
 def chat(messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None) -> tuple[dict[str, Any], str]:
     """Return (assistant_message_dict, provider_label). Raises LLMUnavailable if every provider fails."""
     errors = []
+
+    # Bedrock first when it is configured: it is the only option here without a
+    # tokens-per-minute ceiling that a five-agent tool-calling pipeline blows through.
+    if _bedrock_ready():
+        try:
+            return bedrock.chat(messages, tools), f"bedrock:{config.BEDROCK_MODEL}"
+        except Exception as exc:
+            errors.append(f"bedrock: {str(exc)[:200]}")
+            log.warning("bedrock failed, falling through to the API providers: %s", str(exc)[:300])
+
     for p in _usable():
         kwargs: dict[str, Any] = {"model": p.model, "messages": _sanitize(messages, p.name), "temperature": 0.2}
         if tools:
