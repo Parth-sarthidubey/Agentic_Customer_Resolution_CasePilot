@@ -191,6 +191,38 @@ def test_an_order_number_that_does_not_exist_is_never_substituted():
     assert asked and "ORD-99999" in asked[-1]["body"], asked
 
 
+def test_the_fraud_gate_reads_records_not_prose():
+    """POL-FRAUD-1 must key off the customer's record, never the Investigator's wording.
+
+    It used to substring-match "fraud" or "claims" in the risk flags, so the flag
+    "No explicit delivery dispute or fraud indicators" - which says the opposite - held a correct
+    re-shipment for human approval. Negation is what substring matching cannot see.
+    """
+    from app.sandbox import policy, services
+
+    reship = [{"action": "create_replacement",
+               "params": {"order_id": "ORD-50006", "sku": "CHR-14", "warehouse_id": "WH-WEST"}}]
+    benign = ["Shipment SHP-7006 is 7 days past ETA (POL-LOST-1 trigger).",
+              "Customer has 1 claim in last 90 days (standard tier; no high-risk pattern).",
+              "No explicit delivery dispute or fraud indicators."]
+
+    omar = services.get_customer("C-1006")          # 1 claim in 90 days
+    assert policy.approval_reasons(reship, benign, customer = omar,
+                                   order = services.get_order("ORD-50006"),
+                                   intake = {"goal": "where_is_my_order"}) == []
+
+    kenji = services.get_customer("C-1007")         # 4 claims, and photo proof of delivery
+    reasons = policy.approval_reasons(reship, [], customer = kenji,
+                                      order = services.get_order("ORD-50007"),
+                                      intake = {"goal": "where_is_my_order"})
+    assert any("POL-FRAUD-1" in r for r in reasons), reasons
+
+    # The money limits are unchanged and still independent of any of this.
+    big = [{"action": "refund", "params": {"order_id": "ORD-50006", "amount": 500.0}}]
+    assert any("exceeds auto-approval limit" in r
+               for r in policy.approval_reasons(big, [], customer = omar))
+
+
 def test_scenarios_replay_without_a_reset():
     """A judge clicking the same demo case twice must get the same result.
 

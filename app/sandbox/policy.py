@@ -38,8 +38,17 @@ def get_policy(policy_id: str) -> dict[str, str] | None:
                  if d["id"] == policy_id), None)
 
 
-def approval_reasons(actions: list[dict[str, Any]], risk_flags: list[str]) -> list[str]:
-    """Deterministic guardrail: which parts of a plan need a human before execution."""
+def approval_reasons(actions: list[dict[str, Any]], risk_flags: list[str],
+                     customer: dict[str, Any] | None = None, order: dict[str, Any] | None = None,
+                     intake: dict[str, Any] | None = None) -> list[str]:
+    """Deterministic guardrail: which parts of a plan need a human before execution.
+
+    `risk_flags` is the Investigator's prose and is deliberately *not* what decides this. It used
+    to be: any flag containing "fraud" or "claims" tripped POL-FRAUD-1, so the flag "No explicit
+    delivery dispute or fraud indicators" - which says the opposite - held up a correct
+    re-shipment for human approval. Negation is exactly what substring matching cannot see.
+    POL-FRAUD-1 states two objective conditions, and both are in the records.
+    """
     reasons = []
     refund_total = sum(float(a["params"].get("amount", 0)) for a in actions if a["action"] == "refund")
     credit_total = sum(float(a["params"].get("amount", 0)) for a in actions if a["action"] == "issue_store_credit")
@@ -47,8 +56,22 @@ def approval_reasons(actions: list[dict[str, Any]], risk_flags: list[str]) -> li
         reasons.append(f"refund total {refund_total:.2f} exceeds auto-approval limit {config.AUTO_REFUND_LIMIT:.2f} (POL-REF-1)")
     if credit_total > config.AUTO_CREDIT_LIMIT:
         reasons.append(f"store credit {credit_total:.2f} exceeds {config.AUTO_CREDIT_LIMIT:.2f} (POL-GW-1)")
-    if any("fraud" in f.lower() or "claims" in f.lower() for f in risk_flags):
-        reasons.append("claims-review risk flag present (POL-FRAUD-1)")
+    # POL-FRAUD-1, first condition: three or more claims in the last 90 days.
+    claims = int((customer or {}).get("claims_90d") or 0)
+    if claims >= 3:
+        reasons.append(f"POL-FRAUD-1: {claims} claims in the last 90 days")
+
+    # POL-FRAUD-1, second condition: the customer disputes a delivery the carrier marked
+    # delivered with photo proof.
+    goal = (intake or {}).get("goal") or ""
+    # Only a non-delivery claim is a delivery dispute. Asking where a refund has got to for an
+    # item you returned is not, even though the order is also marked delivered with proof.
+    if goal == "where_is_my_order" and order:
+        for sh in order.get("shipments") or []:
+            if sh.get("kind") == "outbound" and sh.get("status") == "delivered" and sh.get("proof"):
+                reasons.append(f"POL-FRAUD-1: non-delivery claim against {sh['id']}, which the "
+                               f"carrier marked delivered ({sh['proof']})")
+                break
     return reasons
 
 

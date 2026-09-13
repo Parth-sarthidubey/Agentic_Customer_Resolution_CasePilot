@@ -299,7 +299,13 @@ def _plan_loop(cid: int, ctx: dict[str, Any], approved: Plan | None = None) -> N
         if plan.decision == "escalate":
             return _escalate(cid, plan.escalate_to or "Support Lead", plan.escalation_reason or plan.summary)
         if plan.decision == "execute" and not preapproved:
-            reasons = policy.approval_reasons([a.model_dump() for a in plan.actions], facts.risk_flags)
+            try:
+                cust = services.get_customer(it.customer_id) if it.customer_id else None
+                order = services.get_order(it.order_id) if it.order_id else None
+            except ServiceError:
+                cust = order = None
+            reasons = policy.approval_reasons([a.model_dump() for a in plan.actions], facts.risk_flags,
+                                              customer = cust, order = order, intake = it.model_dump())
             if reasons:
                 pid = db.create_proposal(cid, {**ctx, "plan": plan.model_dump()}, reasons)
                 db.add_event(cid, "Orchestrator", "approval_required", {"proposal_id": pid, "reasons": reasons,
