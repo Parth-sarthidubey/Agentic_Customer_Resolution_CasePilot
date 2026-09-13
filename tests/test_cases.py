@@ -225,6 +225,55 @@ def test_the_fraud_gate_reads_records_not_prose():
                for r in policy.approval_reasons(big, [], customer = omar))
 
 
+def test_a_revision_cannot_satisfy_one_rule_by_breaking_another(monkeypatch):
+    """Lock in the anti-oscillation fix without spending a model call.
+
+    Live, on a damaged-lamp case: round 1 the gate asked for a return label, the model added it
+    and dropped the refund; round 2 the gate said the plan gives nothing back; out of revisions,
+    escalated. It was one plan away from correct throughout. A resolver that oscillates exactly
+    like that must now be told both constraints at once, and the second time it ignores an
+    objection it must be told so in terms.
+    """
+    from app.agents import crew, orchestrator
+    from app.agents.schemas import ActionStep, Expected, Facts, Intake, Plan
+
+    case = db.create_case(subject = "Lamp smashed", customer_name = "Sofia Berg",
+                          customer_email = "sofia.berg@example.com", channel = "email",
+                          description = "The linen table lamp turned up with the shade torn.")
+    it = Intake(goal = "damaged_item", customer_id = "C-1008", order_id = "ORD-50009",
+                sku = "LMP-33", priority = "P2", summary = "damaged lamp")
+    facts = Facts(findings = ["delivered recently"], options = [], risk_flags = [])
+
+    label = ActionStep(action = "create_return_label",
+                       params = {"order_id": "ORD-50009", "sku": "LMP-33"})
+    refund = ActionStep(action = "refund",
+                        params = {"order_id": "ORD-50009", "amount": 72.0, "reason": "damaged"})
+
+    seen: list[str] = []
+    # Oscillate the way the live model did: refund only, then label only, then refund only...
+    swing = [[refund], [label], [refund]]
+
+    def fake_resolver(case_, it_, facts_, history_, feedback = None):
+        if feedback is not None:
+            seen.append(feedback)
+        actions = swing[min(len(seen), len(swing) - 1)]
+        return Plan(decision = "execute", resolution_type = "replacement",
+                    summary = "test plan", actions = actions,
+                    expected = Expected(return_label = True))
+
+    monkeypatch.setattr(crew, "resolver", fake_resolver)
+    orchestrator._make_plan(case["id"], it, facts, [])
+
+    assert seen, "the gate never sent the plan back"
+    # First rejection: the refund-only plan is missing the return label POL-DMG-1 requires.
+    assert "return label is required" in seen[0], seen[0]
+    # By the second rejection both objections are on the table together, so answering one by
+    # undoing the other is no longer something the model can do without being told.
+    if len(seen) > 1:
+        both = seen[-1]
+        assert "must satisfy ALL of these at once" in both or "did NOT address this last time" in both, both
+
+
 def test_scenarios_replay_without_a_reset():
     """A judge clicking the same demo case twice must get the same result.
 

@@ -291,9 +291,16 @@ def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]
                 return plan
             feedback = "; ".join(issues)
             # The closing "Remedies that would pass" line is advice, not a rule to keep.
-            for issue in issues:
-                if not issue.startswith("Remedies that would pass") and issue not in constraints:
-                    constraints.append(issue)
+            fresh = [i for i in issues if not i.startswith("Remedies that would pass")]
+            repeated = [i for i in fresh if i in constraints]
+            constraints.extend(i for i in fresh if i not in constraints)
+            if repeated:
+                # Same objection, second time. Live, a wrong-item case burned two rounds on
+                # one unread line before finally adding the return label. Saying that the
+                # previous revision ignored it is cheaper than another round.
+                feedback = ("You did NOT address this last time - it is the same objection, "
+                            "still unfixed: " + "; ".join(repeated) + ". Change the plan so this "
+                            "specific point is satisfied." + "\n\n" + feedback)
             _note(cid, "Policy Auditor", "**Plan blocked by the policy gate**\n"
                   + "\n".join(f"- {i}" for i in issues))
         _stage(cid, f"Plan sent back (round {round_}): {feedback}", "Planning", "Resolver Agent")
