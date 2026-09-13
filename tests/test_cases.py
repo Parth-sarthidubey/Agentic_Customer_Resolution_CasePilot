@@ -29,7 +29,9 @@ def run(key: str) -> dict:
     return wait(case["id"])
 
 
-def wait(cid: int, timeout: float = 30) -> dict:
+def wait(cid: int, timeout: float = 60) -> dict:
+    # 60s, not 30: MAX_AUDIT_ROUNDS went to 3, so a case that uses every revision plus the
+    # replan budget legitimately takes longer than the old ceiling.
     end = time.time() + timeout
     while time.time() < end:
         c = db.get_case(cid)
