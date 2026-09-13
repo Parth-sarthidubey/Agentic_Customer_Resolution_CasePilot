@@ -196,6 +196,48 @@ function check(name, ok, detail = "") {
     }
   }
 
+  console.log("\n=== AGENT DESK: the approval guardrail ===");
+  {
+    // A plan that moves more money than the limits allow must stop for a person, and the desk
+    // must give that person what they need to decide: the actions, the reason, and two buttons.
+    const filed = await (await fetch(BASE + "/api/scenarios/wrong_item_high_value", { method: "POST" })).json();
+    let c = filed, waited = 0;
+    while (waited < 60000) {
+      await new Promise((res) => setTimeout(res, 2000));
+      waited += 2000;
+      c = (await (await fetch(BASE + "/api/cases")).json()).find((x) => x.id === filed.id);
+      if (c.status === "Awaiting Approval" || (!c.running && c.status === "Resolved")) break;
+    }
+    check("high-value plan stops for a human", c.status === "Awaiting Approval", `status=${c.status}`);
+    if (c.status === "Awaiting Approval") {
+      const { doc, errors } = await load(`/#/case/${c.id}`, { waitMs: 4500 });
+      check("no JS errors", errors.length === 0, errors.join(" | "));
+      check("approval banner shown", !!doc.querySelector(".approval-banner"));
+      check("banner names the guardrail reason",
+            (doc.querySelector(".ab-reason") || {}).textContent?.trim().length > 0);
+      check("banner lists the actions awaiting approval", doc.querySelectorAll(".ab-box .act").length > 0,
+            `${doc.querySelectorAll(".ab-box .act").length} actions`);
+      check("approve and reject are both offered",
+            !!doc.querySelector("#ap-yes") && !!doc.querySelector("#ap-no"));
+
+      doc.querySelector("#ap-name").value = "Priya (headless check)";
+      doc.querySelector("#ap-comment").value = "approved by ui_check";
+      doc.querySelector("#ap-yes").dispatchEvent(new doc.defaultView.MouseEvent("click", { bubbles: true }));
+      let after = c, w2 = 0;
+      while (w2 < 90000) {
+        await new Promise((res) => setTimeout(res, 2500));
+        w2 += 2500;
+        after = (await (await fetch(BASE + "/api/cases")).json()).find((x) => x.id === c.id);
+        if (!after.running && after.status !== "Awaiting Approval") break;
+      }
+      check("approving executes the plan", after.status === "Resolved", `status=${after.status}`);
+      const prop = (await (await fetch(BASE + "/api/cases/" + c.id)).json()).proposal;
+      check("the decision is on the audit trail",
+            prop && prop.status === "approved" && prop.decided_by === "Priya (headless check)",
+            JSON.stringify(prop && { s: prop.status, by: prop.decided_by }));
+    }
+  }
+
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${"=".repeat(50)}\n${results.length - failed.length}/${results.length} checks passed`);
   if (failed.length) {

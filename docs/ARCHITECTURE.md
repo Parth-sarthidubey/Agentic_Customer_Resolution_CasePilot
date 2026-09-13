@@ -118,11 +118,16 @@ policy, and a board that colours them the same hides which cases a human can act
 Whether triage asks at all depends on where the case came from, because that determines whether
 anyone is there to answer:
 
-| Channel | Entry point | Behaviour |
+Every channel stops when the case cannot be worked (no customer, no order) and when the Intake
+Agent listed `missing_info` alongside its question — it has said it is not confident, and a wrong
+guess refunds the wrong order. What the channel decides is whether a *proactive* question is worth
+it: an agent offering `choices` without flagging anything missing.
+
+| Channel | Entry point | Proactive question? |
 |---|---|---|
-| `chat` | `POST /api/chat` — portal chat | A person is waiting. Ambiguity the Intake Agent flags is worth a question, even when the ids happen to be bound. |
-| `portal` | `POST /api/cases` — portal web form | Fire and forget. Stops only when the case genuinely cannot be worked (no customer, or no order). |
-| `email` | `POST /api/cases` — how the demo scenarios file | Same as the form. |
+| `chat` | `POST /api/chat` — portal chat | Yes. Someone is sitting there to tap an answer. |
+| `portal` | `POST /api/cases` — portal web form | No. Nobody is waiting; parking the ticket helps no one. |
+| `email` | `POST /api/cases` — how the demo scenarios file | No, same as the form. |
 
 When the customer is really choosing between things the agent can already see, `Intake.choices`
 carries them as the customer would recognise them ("Linen Table Lamp — ORD-50009", not

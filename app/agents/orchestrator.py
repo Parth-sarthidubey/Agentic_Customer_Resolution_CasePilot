@@ -93,18 +93,27 @@ def _ask(cid: int, it: Intake, round_: int) -> None:
 
 
 def _needs_triage(it: Intake, case: dict[str, Any]) -> bool:
-    """True when answering is guesswork and one question would settle it.
+    """True when answering would be guesswork and one question would settle it.
 
-    Chat is a conversation, so ambiguity the Intake Agent flagged is worth a question even when
-    the ids happen to be bound - "which of your two lamps" changes the whole resolution. A ticket
-    that arrived by email or the web form has nobody sitting there to answer, so it only stops
-    when the case genuinely cannot be worked: no customer, or no order.
+    Three cases, in order of how badly a guess would hurt:
+
+    1. No customer or no order - the case cannot be worked at all, on any channel.
+    2. The Intake Agent listed `missing_info` and wrote a question. It has told us it is not
+       confident, and that is worth honouring wherever the case came from: a wrong guess here
+       refunds the wrong order. (Live models do bind an id *and* ask about it in the same
+       breath - reading the id as confidence and dropping the question is how the agent ends up
+       resolving the wrong one of two lamps.)
+    3. Chat only: the agent offered `choices` without flagging anything missing - a proactive
+       "which of these did you mean?". Worth asking when someone is sitting there to tap an
+       answer; not worth parking an email or a web-form ticket over.
     """
     if not it.customer_id or not it.order_id:
         return True
-    if case.get("channel") == "chat" and it.choices and it.clarifying_question:
+    if not it.clarifying_question:
+        return False
+    if it.missing_info:
         return True
-    return False
+    return case.get("channel") == "chat" and bool(it.choices)
 
 
 def _process(cid: int) -> None:
