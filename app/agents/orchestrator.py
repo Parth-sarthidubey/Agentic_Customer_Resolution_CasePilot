@@ -236,6 +236,11 @@ def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]
     # to it rather than to the surrender.
     last_exec: Plan | None = None
     challenged = False
+    # Every policy objection raised so far on this case. A revision that answers the newest
+    # one by dropping what the last round demanded is the failure mode this prevents: live,
+    # round 1 asked for a return label, the model added it and removed the refund, round 2
+    # asked for the refund, and the case escalated having been one plan away the whole time.
+    constraints: list[str] = []
     for round_ in range(1, config.MAX_AUDIT_ROUNDS + 1):
         if plan.decision == "escalate":
             # An escalation skips the policy gate entirely, so a wrong reason for escalating is
@@ -285,9 +290,17 @@ def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]
                 _stage(cid, "Policy gate passed")
                 return plan
             feedback = "; ".join(issues)
+            # The closing "Remedies that would pass" line is advice, not a rule to keep.
+            for issue in issues:
+                if not issue.startswith("Remedies that would pass") and issue not in constraints:
+                    constraints.append(issue)
             _note(cid, "Policy Auditor", "**Plan blocked by the policy gate**\n"
                   + "\n".join(f"- {i}" for i in issues))
         _stage(cid, f"Plan sent back (round {round_}): {feedback}", "Planning", "Resolver Agent")
+        if len(constraints) > 1:
+            feedback += ("\n\nYour next plan must satisfy ALL of these at once - an earlier "
+                         "revision already failed by fixing one and breaking another:\n"
+                         + "\n".join(f"- {c}" for c in constraints))
         plan = crew.resolver(case, it, facts, history, feedback = feedback)
     # The auditor is advisory, not the safety net. When it and the Resolver cannot agree, proceed
     # with the last plan provided it still passes the checks that are actually authoritative:
