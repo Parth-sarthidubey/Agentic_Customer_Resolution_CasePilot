@@ -185,6 +185,17 @@ def _process(cid: int) -> None:
     _plan_loop(cid, {"intake": it.model_dump(), "facts": facts.model_dump(), "history": []})
 
 
+def _fraud_hold(it: Intake) -> bool:
+    """Does POL-FRAUD-1 actually hold on the records? (Not: did the model mention fraud.)"""
+    try:
+        cust = services.get_customer(it.customer_id) if it.customer_id else None
+        order = services.get_order(it.order_id) if it.order_id else None
+    except ServiceError:
+        return False
+    return bool(policy.approval_reasons([], [], customer = cust, order = order,
+                                        intake = it.model_dump()))
+
+
 def _sig(action: str, params: dict[str, Any]) -> tuple[str, str]:
     return action, json.dumps(params or {}, sort_keys = True, default = str)
 
@@ -233,8 +244,11 @@ def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]
             # wrong, and a customer owed a refund would have waited on a human for nothing.
             # One push-back, and only when the investigation actually found a remedy that is
             # eligible and flagged no risk; a genuine claims-review case still goes straight up.
+            # Gating this on "no risk flags" made it nearly dead code: the Investigator writes
+            # prose flags on almost every case, benign ones included. What should hold an
+            # escalation is the handbook condition actually being met on the records.
             eligible = [o for o in facts.options if o.eligible and o.option]
-            if not challenged and eligible and not facts.risk_flags:
+            if not challenged and eligible and not _fraud_hold(it):
                 challenged = True
                 feedback = ("You chose to escalate, but the investigation found remedies that are "
                             "already eligible under policy: "

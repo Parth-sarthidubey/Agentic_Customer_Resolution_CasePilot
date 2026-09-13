@@ -93,6 +93,9 @@ def get_customer(customer_id: str) -> dict[str, Any]:
     return c
 
 
+_ELECTRONIC_CATEGORIES = {"electronics"}
+
+
 def get_order(order_id: str) -> dict[str, Any]:
     o = store.q1("SELECT * FROM orders WHERE id = ?", (order_id.strip().upper(),))
     if not o:
@@ -105,7 +108,34 @@ def get_order(order_id: str) -> dict[str, Any]:
                              "WHERE order_id = ?", (o["id"],))
     if o["delivered_at"]:
         o["days_since_delivery"] = (date.today() - date.fromisoformat(o["delivered_at"])).days
+    o["return_windows"] = _return_windows(o)
     return o
+
+
+def _return_windows(order: dict[str, Any]) -> dict[str, Any]:
+    """Say outright whether each return window is still open, rather than leaving it to be derived.
+
+    Models get this wrong, and when they do the case is decided on a false premise before any gate
+    sees it: live, an order delivered fourteen days ago was reported as "outside the 15-day
+    electronics window", every remedy marked ineligible, and the case escalated. Fourteen is inside
+    fifteen. The dates are already here; doing the subtraction once, in code, removes a whole class
+    of wrong answer that no downstream check was positioned to catch.
+    """
+    days = order.get("days_since_delivery")
+    electronic = any((i.get("category") or "").lower() in _ELECTRONIC_CATEGORIES
+                     for i in order.get("items") or [])
+    standard = 15 if electronic else 30
+    return {
+        "days_since_delivery": days,
+        "standard_limit_days": standard,
+        "standard_open": days is None or days <= standard,
+        "damaged_or_wrong_limit_days": 14,
+        "damaged_or_wrong_open": days is None or days <= 14,
+        "note": ("not delivered yet, so no window has started" if days is None else
+                 f"delivered {days} days ago; standard window {standard} days "
+                 f"({'OPEN' if days <= standard else 'CLOSED'}), damaged/wrong window 14 days "
+                 f"({'OPEN' if days <= 14 else 'CLOSED'})"),
+    }
 
 
 def check_inventory(sku: str, region: str = "") -> dict[str, Any]:
