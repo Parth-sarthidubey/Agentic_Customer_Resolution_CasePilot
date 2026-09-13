@@ -117,11 +117,12 @@
                border: 1px solid var(--line-soft); border-radius: 999px; padding: 4px 13px; margin: 2px 0; }
 
     .m { max-width: 74%; padding: 11px 15px; border-radius: 18px; background: var(--soft);
-         white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
+         word-wrap: break-word; line-height: 1.5; }
     .m.me { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 6px; }
     .m.them { align-self: flex-start; background: var(--soft); border-bottom-left-radius: 6px; }
     .m .n { font-size: 11px; opacity: .72; margin-bottom: 4px; font-weight: 600; letter-spacing: .02em;
             display: flex; align-items: center; gap: 6px; }
+    .m .body { white-space: pre-wrap; }
     .m .n .av { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: #fff;
                 display: inline-grid; place-items: center; font-size: 8.5px; font-weight: 700; letter-spacing: 0; }
     .m.me .n { justify-content: flex-end; }
@@ -540,9 +541,7 @@ async function render() {
     const divider = day && day !== lastDay ? `<div class="daychip">${esc(day)}</div>` : "";
     lastDay = day || lastDay;
     const who = isMine ? "You" : `<span class="av">KH</span>Kestrel Support`;
-    return `${divider}<div class="m ${isMine ? "me" : "them"}">
-      <div class="n">${who}</div>${esc(m.body)}
-      <div class="tm">${when(m.created_at)}</div></div>`;
+    return `${divider}<div class="m ${isMine ? "me" : "them"}"><div class="n">${who}</div><div class="body">${esc(m.body)}</div><div class="tm">${when(m.created_at)}</div></div>`;
   }).join("")
     + (d.attachments.length ? `<div class="thumbs">${d.attachments.map((a) => a.content_type.startsWith("image/")
         ? `<img src="/api/attachments/${a.id}" alt="${esc(a.filename)}" title="${esc(a.filename)}">`
