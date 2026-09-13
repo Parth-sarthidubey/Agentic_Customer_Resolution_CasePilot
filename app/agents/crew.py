@@ -70,5 +70,11 @@ def communicator(case: dict[str, Any], plan: Plan, results: list[dict[str, Any]]
                  history: list[dict[str, Any]], verification: dict[str, Any]) -> Reply:
     user = (f"Case:\n{_j(_case_view(case))}\n\nFinal plan:\n{_j(plan.model_dump())}\n\nAction results:\n{_j(results)}"
             f"\n\nEarlier failed attempts:\n{_j(history)}\n\nVerification:\n{_j(verification)}")
+    # The Communicator is the one agent whose prose is already the deliverable, so a reply that
+    # forgets the JSON envelope is still a usable message to the customer - better than the
+    # templated fallback line. Nothing it returns moves money; the actions already ran.
     return run_agent(case["id"], "Communicator Agent", load_prompt("communicator"), user, [], Reply,
-                     lambda tr: offline.communicate(tr, case, plan, results, history))
+                     lambda tr: offline.communicate(tr, case, plan, results, history),
+                     salvage = lambda text: {"customer_message": text.strip(),
+                                             "internal_note": "Model replied in prose; the message "
+                                                              "was used as written."})

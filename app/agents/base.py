@@ -139,9 +139,17 @@ def _schema_hint(model: type[BaseModel]) -> str:
     return "\n".join(lines)
 
 
-def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], output_model: type[M]) -> M:
-    """ReAct-style loop: the model calls tools until it replies with JSON matching output_model."""
+def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], output_model: type[M],
+                  salvage: Callable[[str], dict[str, Any]] | None = None) -> M:
+    """ReAct-style loop: the model calls tools until it replies with JSON matching output_model.
+
+    `salvage` is for the agent whose prose is already the answer. The Communicator's job is to
+    write a message to a customer; when it writes one and forgets the JSON envelope, throwing that
+    away and sending a templated line instead makes the product worse, not safer. Agents whose
+    output drives actions get no salvage - there, a malformed answer must fail.
+    """
     by_name = {t.name: t for t in tools}
+    last_text = ""
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": f"{system}\n\nToday is {date.today().isoformat()}.\n\n## Output\n"
                                       f"When finished, reply with ONLY one JSON object with these fields "
@@ -202,7 +210,10 @@ def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], out
                 messages.append({"role": "tool", "tool_call_id": tc["id"],
                                  "name": tc["function"]["name"], "content": content})
             continue
-        data = _extract_json(msg.get("content") or "")
+        text = msg.get("content") or ""
+        if text.strip():
+            last_text = text
+        data = _extract_json(text)
         if data is not None:
             try:
                 out = output_model.model_validate(data)
@@ -214,16 +225,24 @@ def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], out
             problem = "no JSON object found"
         messages.append({"role": "user", "content": f"Your reply was not valid ({problem}). Reply with ONLY "
                                                     f"the JSON object in the required shape."})
+    if salvage and last_text.strip():
+        try:
+            out = output_model.model_validate(salvage(last_text))
+            tracer.emit("output", data = out.model_dump(), provider = f"{provider} (prose salvaged)")
+            return out
+        except ValidationError:
+            pass
     raise llm.LLMUnavailable(f"no valid answer within the step limit - last problem: {problem[:300]}")
 
 
 def run_agent(ticket_id: int, agent: str, system: str, user: str, tools: list[Tool],
-              output_model: type[M], offline: Callable[[Tracer], M]) -> M:
+              output_model: type[M], offline: Callable[[Tracer], M],
+              salvage: Callable[[str], dict[str, Any]] | None = None) -> M:
     """Run with the LLM; transparently fall back to the offline rule engine if no model is usable."""
     tracer = Tracer(ticket_id, agent)
     if llm.PROVIDERS or llm._bedrock_ready():
         try:
-            return run_llm_agent(tracer, system, user, tools, output_model)
+            return run_llm_agent(tracer, system, user, tools, output_model, salvage)
         except llm.LLMUnavailable as exc:
             # Loud on purpose. A silent fallback produces plausible output from hardcoded rules,
             # which hides a broken model path for as long as nobody reads the small print.

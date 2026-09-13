@@ -325,6 +325,12 @@ def communicate(tr: Tracer, case: dict[str, Any], plan: Plan, results: list[dict
         parts.append(f"As a thank-you for being a loyal customer we've added {e.credit_amount:.2f} store credit to your account.")
     if plan.decision == "inform_only":
         parts.append(plan.summary)
+    if not parts:
+        # Never send "thanks for your patience." and nothing else. If the plan produced no
+        # customer-visible change, say what was actually looked at.
+        parts.append(plan.summary or "We've looked into this and there was nothing further to "
+                                     "action on your order. If that doesn't match what you "
+                                     "expected, reply here and we'll take another look.")
     msg = f"Hi {name}, thanks for your patience. " + " ".join(parts) + " - Kestrel Home Support"
     return Reply(customer_message = msg,
                  internal_note = f"{plan.resolution_type}: {plan.summary} Attempts: {len(history) + 1}. Verified OK.",

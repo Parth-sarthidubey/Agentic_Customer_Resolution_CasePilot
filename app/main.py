@@ -38,6 +38,18 @@ class Decision(BaseModel):
     comment: str = ""
 
 
+def _display_name(name: str, email: str) -> str:
+    """A name worth putting at the top of a customer email.
+
+    Falling back to the raw local part addressed a customer as "Hi omar.rossi". The local part is
+    still the only clue we have before Intake binds the account, so make it presentable.
+    """
+    if name.strip():
+        return name.strip()
+    local = re.sub(r"[._+-]+", " ", email.split("@")[0]).strip()
+    return local.title() or email
+
+
 async def _save_uploads(case_id: int, files: list[UploadFile]) -> None:
     folder = config.UPLOAD_DIR / str(case_id)
     folder.mkdir(parents = True, exist_ok = True)
@@ -90,7 +102,8 @@ async def create_case(subject: str = Form(...), description: str = Form(...), cu
                       customer_name: str = Form(""), channel: str = Form("portal"),
                       files: list[UploadFile] = File(default = [])) -> dict:
     case = db.create_case(subject = subject, description = description, customer_email = customer_email.strip(),
-                          customer_name = customer_name or customer_email.split("@")[0], channel = channel)
+                          customer_name = _display_name(customer_name, customer_email),
+                          channel = channel)
     db.add_message(case["id"], "customer", case["customer_name"], description)
     await _save_uploads(case["id"], files)
     if config.AUTOPILOT:
@@ -111,7 +124,8 @@ async def chat_start(message: str = Form(...), customer_email: str = Form(...),
     subject = (first[:70] + "…") if len(first) > 70 else (first or "New chat")
     case = db.create_case(subject = subject, description = message,
                           customer_email = customer_email.strip(),
-                          customer_name = customer_name or customer_email.split("@")[0], channel = "chat")
+                          customer_name = _display_name(customer_name, customer_email),
+                          channel = "chat")
     db.add_message(case["id"], "customer", case["customer_name"], message)
     await _save_uploads(case["id"], files)
     if config.AUTOPILOT:
