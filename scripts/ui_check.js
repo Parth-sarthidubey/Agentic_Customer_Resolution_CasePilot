@@ -29,7 +29,18 @@ async function load(path, { waitMs = 3500 } = {}) {
     // jsdom has no fetch, and page scripts run during construction - so it has to be installed
     // before parsing, not after.
     beforeParse(window) {
-      window.fetch = (u, o) => fetch(new URL(u, BASE).href, o);
+      // A jsdom FormData is a different realm's object; Node's fetch does not recognise it and
+      // sends an empty body. Rebuild it as a real one so the page's own POSTs are exercised.
+      window.fetch = (u, o = {}) => {
+        let body = o.body;
+        if (body && typeof body.entries === "function" && typeof body.append === "function"
+            && !(body instanceof URLSearchParams)) {
+          const real = new FormData();
+          for (const [k, v] of body.entries()) real.append(k, v);
+          body = real;
+        }
+        return fetch(new URL(u, BASE).href, { ...o, body });
+      };
       window.scrollTo = () => {};
       window.alert = (m) => errors.push("alert: " + m);
     },
@@ -96,6 +107,51 @@ function check(name, ok, detail = "") {
       check("status badge says needs reply",
             (doc.querySelector(".badge") || {}).textContent === "Needs your reply",
             (doc.querySelector(".badge") || {}).textContent);
+
+      // Tapping a chip must actually answer the question and carry the case to a resolution -
+      // rendering the buttons is only half the feature.
+      const pick = [...chips].find((x) => /ORD-\d+/.test(x.textContent));
+      if (pick) {
+        const want = (pick.textContent.match(/ORD-\d+/) || [])[0];
+        pick.dispatchEvent(new doc.defaultView.MouseEvent("click", { bubbles: true }));
+        await new Promise((res) => setTimeout(res, 14000));
+        const after = (await (await fetch(BASE + "/api/cases")).json()).find((x) => x.number === c.number);
+        check("tapping a chip answers and resolves the case", after.status === "Resolved",
+              `status=${after.status}`);
+        check("the tapped order is the one bound", after.order_id === want,
+              `bound ${after.order_id}, tapped ${want}`);
+      }
+    }
+  }
+
+  console.log("\n=== PORTAL: the form path runs straight through ===");
+  {
+    const { doc, errors } = await load("/portal", { waitMs: 3500 });
+    check("no JS errors", errors.length === 0, errors.join(" | "));
+    const sel = doc.querySelector("#me");
+    sel.value = [...sel.options].find((o) => o.value.includes("diego.novak")).value;
+    sel.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
+    await new Promise((res) => setTimeout(res, 800));
+
+    doc.querySelector("#newform").dispatchEvent(new doc.defaultView.MouseEvent("click", { bubbles: true }));
+    await new Promise((res) => setTimeout(res, 900));
+    check("form panel shown", doc.querySelector("#formview").hidden === false);
+    check("chat composer hidden in form mode", doc.querySelector("#composer").hidden === true);
+
+    doc.querySelector("#f-sub").value = "Candle set arrived shattered";
+    doc.querySelector("#f-desc").value = "The candle set from ORD-50010 arrived shattered. Can I get a refund?";
+    doc.querySelector("#formview").dispatchEvent(new doc.defaultView.Event("submit", { bubbles: true, cancelable: true }));
+    await new Promise((res) => setTimeout(res, 2500));
+    check("form submit returns to the thread", doc.querySelector("#formview").hidden === true);
+
+    const filed = (await (await fetch(BASE + "/api/cases")).json())
+      .find((c) => c.channel === "portal" && c.subject.includes("Candle set"));
+    check("case filed on the portal channel", !!filed, "no portal case found");
+    if (filed) {
+      await new Promise((res) => setTimeout(res, 10000));
+      const after = (await (await fetch(BASE + "/api/cases")).json()).find((c) => c.id === filed.id);
+      check("form case ran without stopping to ask", after.status !== "Waiting on Customer",
+            `status=${after.status}`);
     }
   }
 

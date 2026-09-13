@@ -92,6 +92,20 @@
     .fchip { background: var(--soft); border-radius: 999px; padding: 3px 10px; }
     .thumbs { align-self: flex-end; display: flex; gap: 6px; flex-wrap: wrap; }
     .thumbs img { width: 74px; height: 74px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+    .formview { padding: 26px 24px; overflow-y: auto; }
+    .formview h1 { font-family: Fraunces, Georgia, serif; font-size: 24px; font-weight: 500; margin: 0 0 4px; }
+    .formview .lede { color: var(--ink-2); margin: 0 0 20px; font-size: 14px; }
+    .fld { margin-bottom: 15px; }
+    .fld label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--ink-2); }
+    .fld input, .fld textarea { width: 100%; border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; background: var(--bg); }
+    .fld input:focus, .fld textarea:focus { outline: 2px solid rgba(180,83,42,.2); border-color: var(--accent); background: #fff; }
+    .fld textarea { min-height: 120px; resize: vertical; }
+    .drop { border: 1.5px dashed #D6C6B6; border-radius: 12px; padding: 15px; text-align: center; color: var(--ink-2); font-size: 13px; cursor: pointer; background: var(--bg); }
+    .drop:hover, .drop.over { background: var(--soft); border-color: var(--accent); }
+    .btn { border: 0; border-radius: 999px; padding: 11px 22px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: var(--accent-2); }
+    .altlink { width: 100%; border: 0; background: none; color: var(--ink-2); font-size: 12.5px; cursor: pointer; padding: 9px 4px 2px; text-decoration: underline; text-underline-offset: 2px; }
+    .altlink:hover { color: var(--accent); }
     .closed { text-align: center; font-size: 13px; color: var(--ink-2); padding: 12px 16px; border-top: 1px solid var(--line); background: var(--bg); }
     footer { text-align: center; color: var(--ink-3); font-size: 12px; padding: 22px; }
     .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -110,13 +124,31 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         New request
       </button>
-      <h2 style="margin-top:16px">Your requests</h2>
+      <button class="altlink" id="newform">Or submit a request form</button>
+      <h2 style="margin-top:14px">Your requests</h2>
       <div id="list"></div>
     </aside>
 
     <section class="chat">
       <div class="chat-head" id="head" hidden></div>
       <div class="thread" id="thread"></div>
+
+      <!-- The non-conversational path. A form has nobody sitting at it, so the case goes
+           straight to the agents exactly like an email does - no triage questions. -->
+      <form class="formview" id="formview" hidden>
+        <h1>Submit a request</h1>
+        <p class="lede">We'll work on it and email you the outcome. Prefer to talk it through?
+          <a href="#" id="tochat" style="color:var(--accent)">Start a chat instead</a>.</p>
+        <div class="fld"><label for="f-sub">What's this about?</label>
+          <input id="f-sub" name="subject" required placeholder="e.g. My lamp arrived broken"></div>
+        <div class="fld"><label for="f-desc">Tell us more</label>
+          <textarea id="f-desc" name="description" required placeholder="Your order number if you have it, what happened, and what you'd like us to do."></textarea></div>
+        <div class="fld"><label>Photos or documents</label>
+          <div class="drop" id="f-drop">Drag files here or <u>browse</u></div>
+          <input type="file" id="f-file" multiple hidden accept="image/*,.pdf,.txt">
+          <div class="files" id="f-files" style="padding:6px 0 0"></div></div>
+        <button class="btn" type="submit">Send request</button>
+      </form>
       <div class="files" id="files"></div>
       <div class="composer" id="composer">
         <button class="icon-btn" id="attach" title="Attach a photo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.2-9.2a3.67 3.67 0 1 1 5.18 5.18l-9.2 9.2a1.83 1.83 0 1 1-2.6-2.6l8.5-8.48"/></svg></button>
@@ -133,7 +165,7 @@
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-let me = null, open = null, files = [], busy = false, lastRender = "";
+let me = null, open = null, files = [], busy = false, lastRender = "", formMode = false, formFiles = [];
 
 const FRIENDLY = {
   "Resolved": ["Resolved", "done"], "Waiting on Customer": ["Needs your reply", "wait"],
@@ -168,13 +200,45 @@ const msg = $("#msg");
 msg.addEventListener("input", () => { msg.style.height = "auto"; msg.style.height = Math.min(msg.scrollHeight, 140) + "px"; });
 msg.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
 $("#send").onclick = () => send();
-$("#new").onclick = () => { open = null; lastRender = ""; files = []; showFiles(); render(); msg.focus(); };
+$("#new").onclick = () => { formMode = false; open = null; lastRender = ""; files = []; showFiles(); render(); msg.focus(); };
+$("#newform").onclick = () => { formMode = true; open = null; lastRender = ""; render(); };
+$("#tochat").onclick = (e) => { e.preventDefault(); formMode = false; lastRender = ""; render(); msg.focus(); };
 $("#attach").onclick = () => $("#file").click();
 $("#file").onchange = (e) => { files = [...files, ...e.target.files]; showFiles(); e.target.value = ""; };
 function showFiles() {
   $("#files").innerHTML = files.map((f, i) => `<span class="fchip">📎 ${esc(f.name)} <button data-i="${i}" style="border:0;background:none;cursor:pointer;color:inherit">×</button></span>`).join("");
   document.querySelectorAll("#files button").forEach((b) => (b.onclick = () => { files.splice(+b.dataset.i, 1); showFiles(); }));
 }
+
+/* The form path files on the `portal` channel, which the orchestrator runs straight through -
+   there is nobody sitting at a form to answer a clarifying question. */
+const fdrop = $("#f-drop"), fpick = $("#f-file");
+fdrop.onclick = () => fpick.click();
+fdrop.ondragover = (e) => { e.preventDefault(); fdrop.classList.add("over"); };
+fdrop.ondragleave = () => fdrop.classList.remove("over");
+fdrop.ondrop = (e) => { e.preventDefault(); fdrop.classList.remove("over"); formFiles = [...formFiles, ...e.dataTransfer.files]; showFormFiles(); };
+fpick.onchange = (e) => { formFiles = [...formFiles, ...e.target.files]; showFormFiles(); e.target.value = ""; };
+function showFormFiles() {
+  $("#f-files").innerHTML = formFiles.map((f) => `<span class="fchip">&#128206; ${esc(f.name)}</span>`).join("");
+}
+$("#formview").onsubmit = async (e) => {
+  e.preventDefault();
+  if (busy) return;
+  busy = true;
+  try {
+    const fd = new FormData();
+    fd.append("subject", $("#f-sub").value); fd.append("description", $("#f-desc").value);
+    fd.append("customer_email", me[0]); fd.append("customer_name", me[1]); fd.append("channel", "portal");
+    formFiles.forEach((f) => fd.append("files", f));
+    const c = await api("/api/cases", { method: "POST", body: fd });
+    $("#f-sub").value = ""; $("#f-desc").value = ""; formFiles = []; showFormFiles();
+    formMode = false; open = c.id;
+  } catch (err) {
+    alert("Could not send: " + err.message);
+  } finally {
+    busy = false; lastRender = ""; render();
+  }
+};
 
 async function send(text) {
   const body = (text ?? msg.value).trim();
@@ -213,6 +277,12 @@ async function render() {
     </button>`;
   }).join("") || `<div style="color:var(--ink-3);font-size:13px;padding:6px 2px">No requests yet.</div>`;
   document.querySelectorAll(".req").forEach((b) => (b.onclick = () => { open = +b.dataset.id; lastRender = ""; render(); }));
+
+  $("#formview").hidden = !formMode;
+  $("#thread").hidden = formMode;
+  $("#composer").hidden = formMode;
+  if (formMode) { $("#head").hidden = true; $("#closed").hidden = true; $("#files").hidden = true; return; }
+  $("#files").hidden = false;
 
   if (!open) return renderWelcome();
 
