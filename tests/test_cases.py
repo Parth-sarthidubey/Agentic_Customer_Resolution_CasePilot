@@ -274,6 +274,50 @@ def test_a_revision_cannot_satisfy_one_rule_by_breaking_another(monkeypatch):
         assert "must satisfy ALL of these at once" in both or "did NOT address this last time" in both, both
 
 
+def test_return_windows_are_stated_not_left_to_be_derived():
+    """The window arithmetic must come out of get_order, not out of a model.
+
+    Two separate live runs reported an order delivered fourteen days ago as "outside the 15-day
+    electronics window" and decided the case on that. Fourteen is inside fifteen.
+    """
+    from app.sandbox import services, store
+
+    o = services.get_order("ORD-50002")            # electronics, 15-day window
+    w = o["return_windows"]
+    assert w["standard_limit_days"] == 15, w
+    assert w["days_since_delivery"] == w["days_since_delivery"]
+    assert w["standard_open"] is (w["days_since_delivery"] <= 15), w
+    assert "OPEN" in w["note"] or "CLOSED" in w["note"], w
+
+    # Exactly on the limit counts as inside it, and a day past does not.
+    for days, expected in ((15, True), (16, False)):
+        store.x("UPDATE orders SET delivered_at = date('now', ?) WHERE id = 'ORD-50002'",
+                (f"-{days} days",))
+        assert services.get_order("ORD-50002")["return_windows"]["standard_open"] is expected, days
+
+    # An undelivered order has no window running yet.
+    assert services.get_order("ORD-50003")["return_windows"]["standard_open"] is True
+
+
+def test_a_blocked_plan_is_told_what_would_pass():
+    """The gate names viable remedies, with amounts, not only the breach.
+
+    A stockout case answered a blocked plan with another blocked plan twice and escalated, with a
+    38.00 refund available the whole time.
+    """
+    from app.sandbox import policy, services
+
+    over_cap = [{"action": "issue_store_credit",
+                 "params": {"customer_id": "C-1001", "amount": 38.0, "reason": "goodwill"}}]
+    issues = policy.review_plan({"actions": over_cap, "decision": "execute"},
+                                services.get_order("ORD-50001"), services.get_customer("C-1001"),
+                                {"goal": "damaged_item", "sku": "KT-220"})
+    assert any("exceeds the 25.00 cap" in i for i in issues), issues
+    hint = next((i for i in issues if i.startswith("Remedies that would pass")), None)
+    assert hint, issues
+    assert "refund up to" in hint and "needs no approval" in hint, hint
+
+
 def test_scenarios_replay_without_a_reset():
     """A judge clicking the same demo case twice must get the same result.
 
