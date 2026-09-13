@@ -38,11 +38,14 @@ uv run uvicorn app.main:app --port 8000
 
 ## 0:25–0:50 · Goal — the case arrives
 
-Two ways in, and the difference is the point:
+Two screens in the portal, and the difference is the point:
 
-- **Chat** (`/portal`, the default) — a person is sitting there, so the agent can ask.
-- **The request form** (“Or submit a request form”) and **email** — nobody is waiting, so the
-  case runs straight through without stopping to ask.
+- **Chat** (the default) — a person is sitting there, so the agent can ask.
+- **New ticket** and **email** — nobody is waiting, so the case runs straight through. The ticket
+  form asks for the order and the problem up front instead, which is how it avoids needing to.
+
+> Worth one sentence on camera: *“Same agents, same policy. What changes is whether there is
+> anyone there to answer a question — so the chat asks, and the ticket form asks up front instead.”*
 
 For the main arc, submit from the **chat**, with the photo attached.
 
