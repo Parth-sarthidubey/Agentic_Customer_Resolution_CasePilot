@@ -532,3 +532,7 @@ details.tool pre {
   .board { display: grid; grid-template-columns: 1fr; }
   .column { max-width: none; }
 }
+
+/* A fallback to the rule engine must be impossible to miss - it means the demo is
+   showing hardcoded logic, not an agent. */
+.world.fallback{background:var(--bad-tint);border-color:var(--bad-line);border-left-color:var(--bad);color:#9F1239}

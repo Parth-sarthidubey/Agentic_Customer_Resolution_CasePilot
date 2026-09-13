@@ -105,6 +105,25 @@ def _already_failed(history: list[dict[str, Any]]) -> set[tuple[str, str]]:
     return {_sig(h["failed_action"], h.get("params") or {}) for h in history if h.get("failed_action")}
 
 
+def _policy_issues(it: Intake, plan: Plan) -> list[str]:
+    """Check the plan against the handbook, in code.
+
+    This replaced an LLM Policy Auditor. The rules that gate execution are windows, ledger
+    balances, stock levels and ETAs - arithmetic, not judgement. A model re-deriving them each
+    time cost a third of the calls in a case, re-read what the Resolver had already read, and
+    deadlocked by objecting to plans that broke no rule. Code cannot be argued out of a limit.
+    """
+    try:
+        order = services.get_order(it.order_id) if it.order_id else {}
+        customer = services.get_customer(it.customer_id) if it.customer_id else {}
+    except ServiceError:
+        return []          # cannot verify the plan against records; the executor still guards
+    if not order:
+        return []
+    return policy.review_plan(plan.model_dump(), order, customer, it.model_dump(),
+                              inventory = lambda sku, region: services.check_inventory(sku, region))
+
+
 def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]) -> Plan:
     case = db.get_case(cid)
     _stage(cid, "Resolver Agent is planning the resolution" + (" (re-planning)" if history else ""),
@@ -134,33 +153,29 @@ def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]
                         f"payment can still refund) or choose a different remedy.")
             _stage(cid, f"Rejected a repeat of the failed action: {', '.join(sorted(set(repeats)))}")
         else:
-            _stage(cid, "Policy Auditor is reviewing the plan", "Policy Review", "Policy Auditor")
-            review = crew.auditor(case, it, facts, plan)
-            if review.verdict == "approve":
-                _stage(cid, "Policy Auditor approved the plan")
+            _stage(cid, "Policy gate is checking the plan against the handbook", "Policy Review", "Policy Auditor")
+            issues = _policy_issues(it, plan)
+            if not issues:
+                _stage(cid, "Policy gate passed")
                 return plan
-            feedback = review.feedback
+            feedback = "; ".join(issues)
+            _note(cid, "Policy Auditor", "**Plan blocked by the policy gate**\n"
+                  + "\n".join(f"- {i}" for i in issues))
         _stage(cid, f"Plan sent back (round {round_}): {feedback}", "Planning", "Resolver Agent")
         plan = crew.resolver(case, it, facts, history, feedback = feedback)
     # The auditor is advisory, not the safety net. When it and the Resolver cannot agree, proceed
     # with the last plan provided it still passes the checks that are actually authoritative:
-    # a valid typed action list, no repeat of a refused action, and - downstream in _plan_loop -
-    # the Python approval guardrail and SQL verification. Escalating a plan that breaks no rule
-    # leaves a real customer unhelped over a disagreement between two models.
+    # Last chance: the gate's objections are arithmetic, so if the newest plan happens to clear
+    # them now, run it. Otherwise escalate carrying the exact breaches - unlike a model's opinion,
+    # these are real rules, and overriding them would move a customer's money against policy.
     candidate = plan if (plan.decision == "execute" and plan.actions) else last_exec
-    safe = (candidate is not None
-            and not actions.validate([a.model_dump() for a in candidate.actions])
-            and not [a for a in candidate.actions if _sig(a.action, a.params) in refused])
-    if safe:
-        plan = candidate
-        _stage(cid, f"Policy Auditor still objects after {config.MAX_AUDIT_ROUNDS} rounds; the plan breaks "
-                    f"no policy rule, so it proceeds under the guardrail and will be verified. "
-                    f"Objection recorded: {feedback}")
-        _note(cid, "Policy Auditor", f"**Unresolved objection** (plan proceeded): {feedback}")
-        return plan
-    return Plan(decision = "escalate", resolution_type = "planning_failed", summary = "No approved plan.",
-                escalate_to = "Support Lead",
-                escalation_reason = f"Resolver and Policy Auditor could not agree on a compliant plan: {feedback}")
+    if candidate is not None and not actions.validate([a.model_dump() for a in candidate.actions])             and not [a for a in candidate.actions if _sig(a.action, a.params) in refused]             and not _policy_issues(it, candidate):
+        _stage(cid, "Policy gate passed on the final revision")
+        return candidate
+    return Plan(decision = "escalate", resolution_type = "policy_blocked",
+                summary = "No plan could satisfy the policy handbook.", escalate_to = "Support Lead",
+                escalation_reason = f"Blocked by the policy gate after {config.MAX_AUDIT_ROUNDS} "
+                                    f"revisions: {feedback}")
 
 
 def _plan_loop(cid: int, ctx: dict[str, Any], approved: Plan | None = None) -> None:

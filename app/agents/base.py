@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
@@ -13,6 +14,8 @@ from pydantic import BaseModel, ValidationError
 
 from app import config, db, llm
 from app.tools.read_tools import Tool
+
+log = logging.getLogger(__name__)
 
 M = TypeVar("M", bound = BaseModel)
 
@@ -147,9 +150,23 @@ def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], out
     ]
     specs = [t.spec() for t in tools] or None
     seen: dict[tuple[str, str], Any] = {}
+    forced = False
+    problem = "no answer attempted"
     for _step in range(config.MAX_AGENT_STEPS):
-        # If the last message was a JSON fix request, remove tool specs to force JSON output
-        current_specs = None if (messages and messages[-1]["role"] == "user" and "not valid" in messages[-1].get("content", "")) else specs
+        # Two reasons to take the tools away and demand the answer:
+        #   - the last reply was invalid JSON, so offering tools invites another detour;
+        #   - the step budget is nearly spent. Running it to zero means falling back to the rule
+        #     engine, which is far worse than answering from what has already been gathered.
+        retrying_json = bool(messages and messages[-1]["role"] == "user"
+                             and "not valid" in (messages[-1].get("content") or ""))
+        out_of_road = _step >= config.MAX_AGENT_STEPS - 2
+        if out_of_road and not forced:
+            forced = True
+            messages.append({"role": "user", "content":
+                             "Stop calling tools. Answer now with the JSON object, using only what "
+                             "you have already gathered. If something is still unknown, say so in "
+                             "the fields rather than looking it up."})
+        current_specs = None if (retrying_json or out_of_road) else specs
         msg, provider = llm.chat(messages, current_specs)
         messages.append(msg)
         calls = msg.get("tool_calls") or []
@@ -197,18 +214,24 @@ def run_llm_agent(tracer: Tracer, system: str, user: str, tools: list[Tool], out
             problem = "no JSON object found"
         messages.append({"role": "user", "content": f"Your reply was not valid ({problem}). Reply with ONLY "
                                                     f"the JSON object in the required shape."})
-    raise llm.LLMUnavailable("agent did not produce a valid answer within the step limit")
+    raise llm.LLMUnavailable(f"no valid answer within the step limit - last problem: {problem[:300]}")
 
 
 def run_agent(ticket_id: int, agent: str, system: str, user: str, tools: list[Tool],
               output_model: type[M], offline: Callable[[Tracer], M]) -> M:
     """Run with the LLM; transparently fall back to the offline rule engine if no model is usable."""
     tracer = Tracer(ticket_id, agent)
-    if llm.PROVIDERS:
+    if llm.PROVIDERS or llm._bedrock_ready():
         try:
             return run_llm_agent(tracer, system, user, tools, output_model)
         except llm.LLMUnavailable as exc:
-            tracer.emit("info", text = f"LLM unavailable ({str(exc)[:240]}). Falling back to offline rules.")
+            # Loud on purpose. A silent fallback produces plausible output from hardcoded rules,
+            # which hides a broken model path for as long as nobody reads the small print.
+            reason = str(exc)[:240]
+            log.warning("%s fell back to offline rules: %s", agent, reason)
+            tracer.emit("fallback", agent = agent, reason = reason,
+                        text = f"No model could answer for the {agent} ({reason}). "
+                               f"This step ran on deterministic rules, not an LLM.")
     out = offline(tracer)
     tracer.emit("output", data = out.model_dump(), provider = "offline-rules")
     return out

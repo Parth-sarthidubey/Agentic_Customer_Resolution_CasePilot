@@ -391,6 +391,7 @@ function addEvent(e) {
   }
   if (e.type === "output") { row(`<div class="out">${renderOutput(e.agent, p.data)}</div>`, `<span class="prov">${esc(p.provider || "")}</span>`); return; }
   if (e.type === "verification") { row(`<div class="out"><div class="o-title">${p.passed ? "✓ All checks passed" : "✗ Checks failed"}</div>${p.checks.map((k) => `<div class="small"><span class="${k.passed ? "opt-ok" : "opt-no"}">${k.passed ? "✓" : "✗"}</span> ${esc(k.check)} - ${esc(k.detail)}</div>`).join("")}</div>`); return; }
+  if (e.type === "fallback") { row(`<div class="world fallback">${icon("warn", 16)}<div><b>Model unavailable — deterministic rules used.</b> ${esc(p.text || "")}</div></div>`); return; }
   if (e.type === "world_event") { row(`<div class="world">${icon("warn", 16)}<div><b>Environment changed:</b> ${esc(p.text)}</div></div>`); return; }
   if (e.type === "approval_required") { row(`<div class="out" style="--c:var(--warn)"><div class="o-title">Paused for human approval</div><div class="small">${p.reasons.map(esc).join("<br>")}</div></div>`); return; }
   if (e.type === "approval") { row(`<div class="out" style="--c:var(--ok)"><div class="o-title">${p.approved ? "Approved" : "Rejected"}</div><div class="small">${esc(p.comment || "")}</div></div>`); return; }
