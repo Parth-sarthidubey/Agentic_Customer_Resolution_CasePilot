@@ -72,6 +72,7 @@ All pinned in `pyproject.toml` / `uv.lock`; `uv run` installs them on first use.
 | `boto3` | AWS Bedrock (optional) |
 | `python-dotenv`, `python-multipart` | configuration and file uploads |
 | `pytest` *(dev)* | the end-to-end test suite |
+| `jsdom` *(dev, npm)* | headless UI checks in `scripts/ui_check.js` |
 
 ### Run it
 
@@ -88,9 +89,27 @@ Use **Demo cases** in the top bar to file any of the eight cases and watch the a
 **No API key is required** — with no key configured, CasePilot runs its deterministic offline
 agents and every scenario still completes end to end.
 
+## Verifying it works
+
+Three layers, because the first two cannot see what the third does.
+
 ```bash
-uv run pytest      # 10 end-to-end tests, hermetic, no key needed
+uv run pytest                          # 14 end-to-end cases, hermetic, no key needed
+node scripts/ui_check.js               # 40 assertions against both UIs (needs a server + npm i jsdom)
+uv run python scripts/live_check.py    # 16 cases against the real model chain
 ```
+
+`pytest` pins `LLM_MODE=offline`, which makes it fast and hermetic and means it exercises the
+deterministic rule engine and **never the agents**. `ui_check.js` drives the real pages in jsdom -
+it fills the form, taps a triage choice and follows the case to a resolution, and takes the
+approval banner through to the audit trail.
+
+`live_check.py` is the one that finds agent bugs. It runs every demo scenario plus eight free-form
+messages of the kind a tester actually types ("something is wrong", "problem with ORD-99999") and
+fails on a wrong end state, an internal error, **or a silent fallback to the rule engine** - that
+last one being what lets a broken model path look healthy. Everything in
+`docs/ARCHITECTURE.md` about guardrails reading records rather than model prose is there because
+this script caught the opposite.
 
 ## Environment configuration
 
