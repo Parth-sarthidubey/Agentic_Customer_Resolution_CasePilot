@@ -71,6 +71,15 @@
     .dot.wait { background: #C08A2E; }
     @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .2 } }
 
+    .demo { display: block; width: 100%; text-align: left; border: 1px solid var(--line);
+            background: var(--card); border-radius: 11px; padding: 9px 11px; margin-bottom: 6px;
+            cursor: pointer; transition: .13s; }
+    .demo:hover { border-color: var(--accent); background: var(--accent-tint); }
+    .demo .dt { font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+    .demo .ds { font-size: 11px; color: var(--ink-3); margin-top: 3px; line-height: 1.4; }
+    .demo .dk { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+                color: var(--accent-2); }
+
     .railnote { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft);
                 font-size: 11.5px; line-height: 1.5; color: var(--ink-3); display: flex; gap: 8px; }
     .railnote svg { flex: none; margin-top: 2px; color: var(--ok); }
@@ -211,6 +220,9 @@
       <button class="altlink" id="newform">Or submit a request form</button>
       <h2 style="margin-top:14px">Your requests</h2>
       <div id="list"></div>
+      <h2 style="margin-top:16px">Try an example</h2>
+      <div id="demos"></div>
+
       <div class="railnote">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
              stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
@@ -297,6 +309,31 @@ const FRIENDLY = {
   "Escalated": ["With a specialist", "wait"], "Routed": ["With a specialist", "wait"],
   "Awaiting Approval": ["Being reviewed", "wait"],
 };
+/* Examples a judge can drive themselves, without knowing the sandbox. Each one names the
+   behaviour it is there to show, because "try it and see" is a poor demo: the interesting part
+   of a triage case is that it asks rather than guesses, and you have to know that to notice it.
+   These deliberately go in through the two customer paths, not the desk's demo menu, which
+   files everything on the email channel. */
+const DEMOS = [
+  { k: "asks", mode: "chat", who: "sofia.berg@example.com",
+    label: "Vague - two recent orders",
+    shows: "Cannot tell which order. Asks, and offers both by product name.",
+    message: "something I bought is broken and I want it sorted" },
+  { k: "resolves", mode: "chat", who: "ava.stone@example.com",
+    label: "Damaged, order named",
+    shows: "Enough to act on. Investigates and resolves without asking.",
+    message: "My kettle from ORD-50001 arrived cracked. I need it replaced by Tuesday, it is a gift." },
+  { k: "approval", mode: "ticket", who: "zara.okafor@example.com",
+    label: "High value - needs a human",
+    shows: "749.00 is over the auto-approval limit, so it stops for a supervisor.",
+    subject: "Wrong item delivered - espresso machine", topic: "wrong_item", order: "ORD-50005",
+    message: "I ordered the Barista Espresso Machine but the box had a coffee grinder in it. I would like a full refund." },
+  { k: "ghost", mode: "chat", who: "ava.stone@example.com",
+    label: "An order that does not exist",
+    shows: "Never substitutes a real order for one that is not in the records.",
+    message: "Order ORD-99999 never turned up. Refund me please." },
+];
+
 const STARTERS = [
   "My order arrived damaged",
   "Where is my order?",
@@ -316,6 +353,7 @@ async function api(p, o = {}) {
   $("#me").innerHTML = cs.map((c) => `<option value="${esc(c.email)}|${esc(c.name)}">${esc(c.name)}</option>`).join("");
   $("#me").onchange = () => { me = $("#me").value.split("|"); open = null; lastRender = ""; render(); };
   me = $("#me").value.split("|");
+  renderDemos();
   render();
   setInterval(() => { if (!busy) render(); }, 1500);
 })();
@@ -424,6 +462,40 @@ async function send(text) {
   } finally {
     busy = false; $("#send").disabled = false; lastRender = ""; render();
   }
+}
+
+function renderDemos() {
+  $("#demos").innerHTML = DEMOS.map((d, i) => `<button class="demo" data-i="${i}">
+    <div class="dk">${d.mode === "chat" ? "Chat" : "Ticket"}</div>
+    <div class="dt">${esc(d.label)}</div>
+    <div class="ds">${esc(d.shows)}</div></button>`).join("");
+  document.querySelectorAll(".demo").forEach((b) => (b.onclick = () => runDemo(DEMOS[+b.dataset.i])));
+}
+
+async function runDemo(d) {
+  // Sign in as whoever the example needs, so the sandbox has the right orders behind it.
+  const opt = [...$("#me").options].find((o) => o.value.startsWith(d.who));
+  if (opt) { $("#me").value = opt.value; me = opt.value.split("|"); }
+
+  if (d.mode === "chat") {
+    formMode = false; open = null; lastRender = "";
+    $("#tab-chat").classList.add("on"); $("#tab-ticket").classList.remove("on");
+    await render();
+    msg.value = d.message;
+    await send();               // file it and let the agents pick it up
+    return;
+  }
+  // Ticket examples are left filled in but not submitted, so the fields can be read first.
+  showScreen("ticket");
+  await new Promise((r) => setTimeout(r, 700));
+  $("#f-sub").value = d.subject || "";
+  $("#f-desc").value = d.message;
+  if (d.topic) $("#f-topic").value = d.topic;
+  if (d.order) {
+    const o = [...$("#f-order").options].find((x) => x.value === d.order);
+    if (o) $("#f-order").value = d.order;
+  }
+  $("#f-sub").scrollIntoView({ block: "nearest" });
 }
 
 /* ---------- render ---------- */

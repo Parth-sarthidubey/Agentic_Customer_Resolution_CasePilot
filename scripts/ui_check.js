@@ -68,6 +68,14 @@ function check(name, ok, detail = "") {
     const thread = doc.querySelector("#thread");
     check("thread or welcome rendered", !!thread && thread.innerHTML.trim().length > 0);
     check("composer present", !!doc.querySelector("#msg") && !!doc.querySelector("#send"));
+    // Judges need a way in without knowing the sandbox, and each example must say what it shows.
+    const demos = doc.querySelectorAll(".demo");
+    check("demo examples offered", demos.length >= 3, `${demos.length} examples`);
+    check("each example says what it demonstrates",
+          [...demos].every((d) => d.querySelector(".ds")?.textContent.trim().length > 10));
+    check("examples cover both chat and ticket",
+          new Set([...demos].map((d) => d.querySelector(".dk")?.textContent.trim())).size === 2,
+          [...demos].map((d) => d.querySelector(".dk")?.textContent.trim()).join(","));
   }
 
   console.log("\n=== PORTAL: triage chips on a waiting case ===");
