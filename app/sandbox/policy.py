@@ -113,6 +113,17 @@ def review_plan(plan: dict[str, Any], order: dict[str, Any], customer: dict[str,
             issues.append(f"POL-DMG-1: a prepaid return label is required for {sku or 'the item'} "
                           f"({'wrong item' if goal == 'wrong_item' else f'priced {price:.2f}'})")
 
+    # When the item was faulty or wrong, a return label on its own is not a resolution - it
+    # collects the item and gives the customer nothing back. Caught on the live model chain: a
+    # 749.00 wrong-item case closed with a label alone, which verified clean because the plan
+    # only ever claimed the label. Change-of-mind returns are different and stay exempt: there
+    # the label goes out first and the refund follows when the item arrives.
+    if goal in ("damaged_item", "wrong_item") and has_label             and not (refund_total > 0 or credit_total > 0
+                     or any(a.get("action") == "create_replacement" for a in actions)):
+        issues.append("POL-DMG-1: the plan takes the item back but gives nothing in return - a "
+                      "prepaid return label must be paired with a refund, a replacement or store "
+                      "credit")
+
     # POL-CAN-1 - cancellation only before dispatch.
     if any(a.get("action") == "cancel_order" for a in actions) and order.get("status") not in ("placed", "paid"):
         issues.append(f"POL-CAN-1: {order.get('id')} is {order.get('status')} and can no longer be "

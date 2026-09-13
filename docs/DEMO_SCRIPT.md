@@ -38,7 +38,24 @@ uv run uvicorn app.main:app --port 8000
 
 ## 0:25–0:50 · Goal — the case arrives
 
-Submit the case from the **customer portal**, with the photo attached.
+Two ways in, and the difference is the point:
+
+- **Chat** (`/portal`, the default) — a person is sitting there, so the agent can ask.
+- **The request form** (“Or submit a request form”) and **email** — nobody is waiting, so the
+  case runs straight through without stopping to ask.
+
+For the main arc, submit from the **chat**, with the photo attached.
+
+> **Optional 20-second detour, and it demos well.** Sign in as **Sofia Berg** and type something
+> deliberately vague — *“something I bought is broken”*. Sofia has two recent orders, so the
+> Intake agent cannot know which. It asks, and offers both orders as buttons naming the actual
+> products. Tap one; the case binds that order and runs on to a resolution.
+>
+> *“It doesn’t guess, and it doesn’t make her go and find an order number. It asks the one
+> question that resolves the ambiguity, and it asks it in a form she can answer with one tap.”*
+>
+> On the desk, the same exchange is on the record: the agent’s question is tagged **triage Q1**
+> and shows exactly which options were put in front of her.
 
 Switch to the desk. The case appears on the board and moves to **Triage**.
 

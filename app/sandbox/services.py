@@ -195,7 +195,15 @@ def create_replacement(order_id: str, sku: str, warehouse_id: str) -> dict[str, 
                    (sku, warehouse_id))
     if not inv or inv["available"] < 1:
         store.audit("inventory", "reserve_failed", {"sku": sku, "warehouse_id": warehouse_id}, kind = "failure")
-        raise ServiceError("OUT_OF_STOCK", f"{sku} has no available stock in {warehouse_id}")
+        # A refusal that names the way out. The agent already has the inventory tool, but a bare
+        # "no stock in WH-EAST" reads as a dead end and the models were answering it with a
+        # goodwill credit or a verbatim retry rather than the warehouse next door. Saying where
+        # the stock actually is turns the failure into the next step.
+        alts = store.q("SELECT warehouse_id, on_hand - reserved AS available FROM inventory "
+                       "WHERE sku = ? AND on_hand - reserved > 0 ORDER BY available DESC", (sku,))
+        where = ("; " + ", ".join(f"{a['warehouse_id']} has {a['available']}" for a in alts)
+                 + " - retry with one of those warehouses" if alts else "; no warehouse has stock")
+        raise ServiceError("OUT_OF_STOCK", f"{sku} has no available stock in {warehouse_id}{where}")
     t = store.q1("SELECT days FROM transit_days WHERE warehouse_id = ? AND region = ?", (warehouse_id, o["region"]))
     eta = (date.today() + timedelta(days = t["days"] if t else 5)).isoformat()
     store.x("UPDATE inventory SET reserved = reserved + 1 WHERE sku = ? AND warehouse_id = ?", (sku, warehouse_id))

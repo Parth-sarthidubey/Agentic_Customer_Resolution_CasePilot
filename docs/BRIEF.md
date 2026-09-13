@@ -60,7 +60,11 @@ arrival to verified outcome.
 **Five specialised agents, one explicit state machine:**
 
 1. **Intake** — maps a plain-language message to a goal, a customer and an order; sets priority;
-   asks one clarifying question when the case is genuinely unworkable.
+   and triages: when it cannot tell which order is meant it asks one question, offering the
+   candidates as choices the customer can tap. In chat it asks whenever the ambiguity would change
+   the outcome; on email and the web form, where nobody is waiting, it only stops when the case
+   genuinely cannot be worked, and after three unanswered questions it routes to a human rather
+   than asking forever.
 2. **Investigator** — chooses its own tools across CRM, orders, inventory, shipping, the payment
    ledger, the policy handbook and past resolved cases; returns findings plus the remedies that are
    *actually eligible*, each with a policy reference.

@@ -84,8 +84,9 @@ verification cannot be fooled by an agent that merely *claims* success.
 ```mermaid
 stateDiagram-v2
     [*] --> Triage
-    Triage --> WaitingOnCustomer: order/customer not identifiable
-    WaitingOnCustomer --> Triage: customer replies
+    Triage --> WaitingOnCustomer: needs an answer (asks, with choices)
+    WaitingOnCustomer --> Triage: customer replies or taps a choice
+    Triage --> Routed: still unworkable after 3 questions
     Triage --> Investigating
     Investigating --> Planning
     Planning --> PolicyReview
@@ -101,11 +102,34 @@ stateDiagram-v2
     Planning --> Escalated: no safe path / budget spent
     Resolved --> [*]
     Escalated --> [*]
+    Routed --> [*]
 ```
 
-Budgets live in `app/config.py`: `MAX_AGENT_STEPS = 8` tool calls per agent run,
+Budgets live in `app/config.py`: `MAX_AGENT_STEPS` tool calls per agent run,
 `MAX_AUDIT_ROUNDS = 2` resolver↔auditor revisions, `MAX_REPLANS = 3` plan→execute→verify cycles
-before the case escalates with everything it learned attached.
+before the case escalates with everything it learned attached, and `MAX_TRIAGE_ROUNDS = 3`
+clarifying questions before triage gives up.
+
+### Triage, and why the channel decides it
+
+`Routed` is deliberately not `Escalated`. Running out of questions is not a plan being blocked by
+policy, and a board that colours them the same hides which cases a human can actually unblock.
+
+Whether triage asks at all depends on where the case came from, because that determines whether
+anyone is there to answer:
+
+| Channel | Entry point | Behaviour |
+|---|---|---|
+| `chat` | `POST /api/chat` — portal chat | A person is waiting. Ambiguity the Intake Agent flags is worth a question, even when the ids happen to be bound. |
+| `portal` | `POST /api/cases` — portal web form | Fire and forget. Stops only when the case genuinely cannot be worked (no customer, or no order). |
+| `email` | `POST /api/cases` — how the demo scenarios file | Same as the form. |
+
+When the customer is really choosing between things the agent can already see, `Intake.choices`
+carries them as the customer would recognise them ("Linen Table Lamp — ORD-50009", not
+"ORD-50009"). They ride on the message itself in `messages.meta`, so the chat renders tappable
+buttons and the desk can show the operator exactly what was offered — one record rather than a
+parallel store the two could disagree about. A tap posts the choice as an ordinary customer
+message, so there is no second code path to keep in step.
 
 A plan that re-proposes an action already refused with identical parameters is rejected before
 execution and sent back with the constraint (`_already_failed` in the orchestrator). Adapting has
