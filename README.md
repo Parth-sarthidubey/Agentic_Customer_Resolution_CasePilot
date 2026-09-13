@@ -20,11 +20,17 @@ ticket desk, on **free LLMs**.
 
 - **CasePilot Desk** — a support desk in the style of Jira/ServiceNow: a board, a queue, a case view
   with a **live agent work log**, human approvals, and a view into the enterprise systems of record.
-- **A customer portal** — a support **chat** that triages: the agent asks when it cannot tell which
-  of your orders you mean, and offers the answers as buttons naming the actual products. Customers
-  attach evidence (a photo of the damaged item) and only ever see plain-language replies. A
-  **request form** sits alongside it for people who would rather not chat — that path, like an
-  inbound email, runs straight through without stopping to ask.
+- **A customer portal**, with two screens because the two ways of asking for help behave
+  differently:
+  - **Chat** triages. When the agent cannot tell which of your orders you mean, it asks, and offers
+    the answers as buttons naming the actual products rather than order numbers you would have to
+    go and find.
+  - **New ticket** does not, because nobody is sitting at a form to answer a question. So the form
+    asks up front for the things that decide whether the case can be worked — which order (picked
+    from your own orders), what went wrong, and any need-by date — and then runs straight through,
+    exactly like an inbound email.
+
+  Both accept photos of the damaged item, and both only ever show the customer plain language.
 - **Five agents + an executor and verifier** — Intake → Investigator → Resolver ⇄ Policy Auditor →
   (human approval) → Executor → Verifier → Communicator, coordinated by an explicit state machine.
 - **A simulated enterprise** — CRM, orders, per-warehouse inventory with transit times, a payment

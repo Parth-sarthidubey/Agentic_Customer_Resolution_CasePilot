@@ -126,7 +126,7 @@ it: an agent offering `choices` without flagging anything missing.
 | Channel | Entry point | Proactive question? |
 |---|---|---|
 | `chat` | `POST /api/chat` — portal chat | Yes. Someone is sitting there to tap an answer. |
-| `portal` | `POST /api/cases` — portal web form | No. Nobody is waiting; parking the ticket helps no one. |
+| `portal` | `POST /api/cases` — the **New ticket** screen | No. Nobody is waiting; parking the ticket helps no one. The form compensates by asking for the order, the problem and any need-by date up front — `GET /api/my-orders` populates the picker with the customer's own orders — and folds the answers into the description as plain language the Intake Agent already reads. |
 | `email` | `POST /api/cases` — how the demo scenarios file | No, same as the form. |
 
 When the customer is really choosing between things the agent can already see, `Intake.choices`
