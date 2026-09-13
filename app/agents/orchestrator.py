@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import traceback
 from typing import Any
@@ -92,6 +93,26 @@ def _ask(cid: int, it: Intake, round_: int) -> None:
     _stage(cid, f"Asked the customer a clarifying question{detail}", "Waiting on Customer", "Customer")
 
 
+_ORDER_REF = re.compile(r"\bORD-\d{3,}\b", re.I)
+
+
+def _unfindable_order_named(case: dict[str, Any], it: Intake) -> str | None:
+    """An order id the customer typed that does not exist in the records.
+
+    The dangerous case, seen live: a customer writes "ORD-99999 never turned up, refund me",
+    no such order exists, and the agent quietly binds a different real order of theirs and plans
+    a refund against it. Refunding the wrong order is worse than asking. If the id they gave is
+    not in the records, say so rather than substituting one.
+    """
+    text = f"{case.get('subject') or ''} {case.get('description') or ''}"
+    for ref in {m.upper() for m in _ORDER_REF.findall(text)}:
+        try:
+            services.get_order(ref)
+        except ServiceError:
+            return ref          # they named it, and it does not exist
+    return None
+
+
 def _needs_triage(it: Intake, case: dict[str, Any]) -> bool:
     """True when answering would be guesswork and one question would settle it.
 
@@ -124,6 +145,23 @@ def _process(cid: int) -> None:
                    priority = it.priority, need_by = it.need_by, summary = it.summary)
     _note(cid, "Intake Agent", f"Goal **{it.goal.replace('_', ' ')}** · {it.priority} · order {it.order_id or '?'}"
                                f"{' · need by ' + it.need_by if it.need_by else ''}. {it.summary}")
+
+    ghost = _unfindable_order_named(case, it)
+    if ghost:
+        round_ = _triage_rounds(cid) + 1
+        if round_ <= config.MAX_TRIAGE_ROUNDS:
+            it = it.model_copy(update = {
+                "missing_info": [f"a valid order number (we have no record of {ghost})"],
+                "clarifying_question": f"I can't find an order {ghost} on your account - the number "
+                                       f"might have a typo. Could you check it, or pick the order "
+                                       f"you mean?",
+                "choices": it.choices,
+            })
+            _note(cid, "Intake Agent", f"Customer named **{ghost}**, which is not in the order "
+                                       f"records. Not substituting another order; asking instead.")
+            return _ask(cid, it, round_)
+        return _route(cid, "Support Lead", f"Customer refers to {ghost}, which does not exist, and "
+                                           f"has not given a valid order number.")
 
     if _needs_triage(it, case):
         round_ = _triage_rounds(cid) + 1

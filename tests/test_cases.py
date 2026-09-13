@@ -171,6 +171,26 @@ def test_triage_gives_up_to_a_human_rather_than_looping():
     assert len(asked) <= config.MAX_TRIAGE_ROUNDS
 
 
+def test_an_order_number_that_does_not_exist_is_never_substituted():
+    """Naming a non-existent order must produce a question, not a refund on a different one.
+
+    Found on the live chain: "ORD-99999 never turned up, refund me" bound the customer's real
+    ORD-50001 and planned a 32.00 refund against it. Refunding the wrong order is far worse than
+    asking, so an id the customer gave that is not in the records stops the case.
+    """
+    case = db.create_case(subject = "problem with ORD-99999", customer_name = "Ava Stone",
+                          customer_email = "ava.stone@example.com", channel = "email",
+                          description = "Order ORD-99999 never turned up. Refund me.")
+    db.add_message(case["id"], "customer", "Ava Stone", case["description"])
+    orchestrator.start(case["id"])
+    c = wait(case["id"])
+    assert c["status"] in ("Waiting on Customer", "Routed"), trace(c["id"])
+    assert store.q1("SELECT COUNT(*) n FROM refunds WHERE order_id = 'ORD-50001'")["n"] == 0
+    asked = [m for m in db.messages(c["id"], include_internal = False)
+             if (m.get("meta") or {}).get("triage")]
+    assert asked and "ORD-99999" in asked[-1]["body"], asked
+
+
 def test_scenarios_replay_without_a_reset():
     """A judge clicking the same demo case twice must get the same result.
 

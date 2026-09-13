@@ -67,6 +67,12 @@ def intake(tr: Tracer, case: dict[str, Any]) -> Intake:
     cust = call_tool(rt.T_GET_CUSTOMER, {"customer_id": found[0]["id"]}, tr)
     order_id = (re.search(r"ord-\d{5}", t) or [None])[0]
     order_id = order_id.upper() if order_id else None
+    if order_id:
+        # The customer can type an order number that is not ours. Taking it at face value used to
+        # crash the next lookup; treat it as no order and let triage ask about it.
+        probe = call_tool(rt.T_GET_ORDER, {"order_id": order_id}, tr)
+        if not isinstance(probe, dict) or "items" not in probe:
+            order_id = None
     candidates = []
     if not order_id:
         recent = [o for o in cust["orders"] if o["placed_at"] >= (date.today() - timedelta(days = 60)).isoformat()]

@@ -29,6 +29,7 @@ _GOAL_ALIASES = {
 _ID = re.compile(r"(ORD-\d+|C-\d+)", re.I)
 
 
+
 def _norm(value: Any, allowed: set[str], aliases: dict[str, str], default: str) -> str:
     """Map a near-miss enum value onto one the schema allows."""
     if not isinstance(value, str):
@@ -135,6 +136,36 @@ class ActionStep(BaseModel):
     action: str
     params: dict[str, Any] = Field(default_factory = dict)
     rationale: str = ""
+
+    @model_validator(mode = "before")
+    @classmethod
+    def _find_the_action(cls, v: Any) -> Any:
+        """Recover the action name when the model put it somewhere else.
+
+        Seen live: a step arriving as a bare parameter bag with no `action` at all, which failed
+        validation and dropped the whole Resolver run to the rule engine - a working plan thrown
+        away over the name of a key. The two shapes worth rescuing are an alias (`tool`, `name`)
+        and the action used as the wrapping key, `{"create_replacement": {...}}`.
+        """
+        if not isinstance(v, dict) or v.get("action"):
+            return v
+        v = dict(v)
+        for alias in ("tool", "name", "action_name", "type", "operation"):
+            if isinstance(v.get(alias), str) and v[alias].strip():
+                v["action"] = v.pop(alias)
+                return v
+        # {"create_replacement": {order_id: ...}} - a single key whose value is the parameter bag.
+        from app.tools.actions import CATALOG  # imported here to keep the module import-cycle free
+        known = set(CATALOG)
+        for key, val in list(v.items()):
+            if key in known and isinstance(val, dict):
+                v["action"] = key
+                v.setdefault("params", val)
+                v.pop(key)
+                return v
+        # A flat bag of parameters with the name missing entirely; leave it to fail loudly rather
+        # than guess which action moves the customer's money.
+        return v
 
     @field_validator("params", mode = "before")
     @classmethod
