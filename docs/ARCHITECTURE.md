@@ -16,12 +16,12 @@ resolved only when SQL queries against the systems of record agree with what the
 ```mermaid
 flowchart TB
     subgraph UI["Interfaces"]
-        PORTAL["Customer portal<br/>static/portal.html<br/>chat + file upload"]
+        PORTAL["Customer portal<br/>static/portal.html<br/>triage chat · request form · uploads"]
         DESK["Agent desk<br/>static/index.html<br/>board · queue · systems · knowledge"]
     end
 
     subgraph API["FastAPI · app/main.py"]
-        REST["/api/cases · /events · /decision<br/>/scenarios · /systems · /knowledge"]
+        REST["/api/chat · /api/cases · /events<br/>/decision · /scenarios · /systems · /knowledge"]
     end
 
     subgraph ORCH["Orchestrator · app/agents/orchestrator.py"]
