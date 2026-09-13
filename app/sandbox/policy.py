@@ -188,7 +188,42 @@ def review_plan(plan: dict[str, Any], order: dict[str, Any], customer: dict[str,
             issues.append(f"POL-SLA-1: a replacement from {wh} arrives {row['est_arrival']}, after the "
                           f"customer's need-by date {need_by} - refund instead and explain why")
 
+    if issues:
+        viable = _viable_remedies(order, customer, intake, remaining, days)
+        if viable:
+            issues.append("Remedies that would pass the gate right now: " + "; ".join(viable))
     return issues
+
+
+def _viable_remedies(order: dict[str, Any], customer: dict[str, Any], intake: dict[str, Any],
+                     remaining: float, days: int | None) -> list[str]:
+    """Say what *would* be allowed, not only what was not.
+
+    The gate was already precise about the breach and the models still answered a blocked plan by
+    reaching for another blocked one - on a stockout, a replacement that missed the need-by date,
+    then a goodwill credit over the tier cap, and out of revisions. Naming the amounts that clear
+    every rule costs nothing here and is the same move that turned OUT_OF_STOCK from a dead end
+    into the next step.
+    """
+    out: list[str] = []
+    goal = (intake or {}).get("goal") or ""
+    items = {i["sku"]: i for i in order.get("items") or []}
+    damaged = goal in ("damaged_item", "wrong_item")
+    electronic = any((items.get(s) or {}).get("category") in _ELECTRONICS for s in items)
+    limit = 14 if damaged else (15 if electronic else 30)
+    final_sale = any(i.get("final_sale") for i in items.values())
+
+    window_open = days is None or days <= limit
+    if remaining > 0 and window_open and (damaged or not final_sale):
+        out.append(f"refund up to {remaining:.2f} (within the {limit}-day window"
+                   + (f", and at or under {config.AUTO_REFUND_LIMIT:.2f} it needs no approval)"
+                      if remaining <= config.AUTO_REFUND_LIMIT else
+                      f", though over {config.AUTO_REFUND_LIMIT:.2f} needs a supervisor)"))
+
+    cap = _GOODWILL_CAP.get((customer.get("tier") or "standard").lower(), 0.0)
+    if cap > 0:
+        out.append(f"goodwill store credit up to {cap:.2f} for this tier")
+    return out
 
 
 def _f(action: dict[str, Any], key: str) -> float:
