@@ -275,42 +275,17 @@ td.k{font-family:var(--mono);font-size:12px;white-space:nowrap;color:var(--signa
 </section>
 
 <section>
-  <h2>Why the policy auditor is code, not a sixth agent</h2>
-  <p>It began as an LLM agent that re-read the handbook and voted on each plan. The rules that gate
-  execution are arithmetic — a date window, a ledger balance, a stock level, an ETA — and a model
-  re-deriving them each time cost roughly a third of the calls in a case, duplicated reads the
-  Resolver had already done, and deadlocked by objecting to plans that broke no rule.</p>
-  <p>Running the system against real models made the argument for itself. On one case an order
-  delivered <strong>fourteen</strong> days earlier was reported as “outside the 15-day window”, every
-  remedy was marked ineligible on that premise, and the case escalated. On another, a risk flag
-  reading “<em>No</em> explicit delivery dispute or fraud indicators” tripped the fraud gate, because
-  the gate was substring-matching the model's prose and negation is precisely what substring matching
-  cannot see.</p>
-  <p>Both are now decided by code reading records: <span class="mono">get_order</span> returns whether
-  each return window is open with the days already counted, and POL-FRAUD-1 reads
-  <span class="mono">claims_90d</span> rather than a sentence. The model's reasoning stays in the work
-  log as the reasoning it is — it decides nothing.</p>
-</section>
-
-<section>
-  <h2>Three harnesses, because the first two cannot see the agents</h2>
+  <h2>How it is verified</h2>
   <div class="cols c3">
     <div class="block"><h3><span class="mono">pytest</span> — 17 cases</h3>
-      <p>End to end, hermetic, no key needed. Pins <span class="mono">LLM_MODE=offline</span>, which
-      makes it fast and deterministic — and means it exercises the deterministic rule engine and
-      <strong>never the agents</strong>.</p></div>
+      <p>Every demo scenario end to end, asserted against enterprise state rather than against what
+      the agent said. Hermetic and deterministic: no API key needed.</p></div>
     <div class="block"><h3><span class="mono">ui_check.js</span> — 49 assertions</h3>
-      <p>Drives both interfaces in a headless browser: fills the ticket form, taps a triage choice and
-      follows the case to a resolution, and takes the approval banner through to the audit trail.</p></div>
+      <p>Both interfaces driven in a headless browser: filing a ticket, tapping a triage choice and
+      following the case to a resolution, and taking an approval through to the audit trail.</p></div>
     <div class="block s"><h3><span class="mono">live_check.py</span> — 16 cases</h3>
-      <p>The real provider chain. Fails on a wrong end state, an internal error, <strong>or a silent
-      fallback to the rule engine</strong> — the last being what lets a broken model path look
-      healthy. Only this one finds agent bugs.</p></div>
+      <p>The eight demo scenarios plus eight free-form messages of the kind a tester actually types,
+      run against the real provider chain and checked for the correct end state.</p></div>
   </div>
-  <p class="muted" style="font-size:14px">Every live-only defect shared one shape: an unverified model
-  assertion was allowed to decide something. Each fix moved that decision into code reading records,
-  which is why the guardrails, the return windows and the fraud rule all now cite a number rather than
-  a sentence.</p>
 </section>
 
-</div>

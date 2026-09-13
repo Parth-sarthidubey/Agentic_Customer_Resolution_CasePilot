@@ -281,7 +281,7 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
       <tr><td><strong>Intake</strong></td><td>Maps a plain-language message to a goal, customer and order; sets priority; and triages — when it cannot tell which order is meant it asks one question, offering the candidates as choices the customer can tap.</td><td class="mono n">Intake</td></tr>
       <tr><td><strong>Investigator</strong></td><td>Chooses its own tools across CRM, orders, inventory, shipping, the payment ledger, the policy handbook and past resolved cases. Returns which remedies are <em>actually eligible</em>, each with a policy reference.</td><td class="mono n">Facts</td></tr>
       <tr><td><strong>Resolver</strong></td><td>Commits to one remedy and emits a typed action plan with an explicit <strong>expected outcome</strong>.</td><td class="mono n">Plan</td></tr>
-      <tr><td><strong>Policy gate</strong><br><span class="muted mono" style="font-size:11px">in code, not a model</span></td><td>Re-checks the plan against the handbook — windows, ledger balances, stock levels, ETAs. It also names the remedies that <em>would</em> pass, so a blocked plan gets a way forward rather than only an objection.</td><td class="mono n">list of breaches</td></tr>
+      <tr><td><strong>Policy gate</strong></td><td>Checks every plan against the handbook in code — return windows, ledger balances, stock levels, delivery ETAs. A blocked plan is told which remedies <em>would</em> pass, with the amounts, so it can adapt rather than stall.</td><td class="mono n">list of breaches</td></tr>
       <tr><td><strong>Communicator</strong></td><td>Writes the customer reply and the internal note, and distils the case into a knowledge-base entry for next time.</td><td class="mono n">Reply</td></tr>
     </tbody>
   </table></div>
@@ -290,11 +290,6 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
     <div class="block proof" style="border-top-color:var(--verify)"><h3>Verifier</h3><p>Reads the systems of record back and decides whether the case may close.</p></div>
     <div class="block s"><h3>World events</h3><p>Conditions change <em>while</em> the agent works, so adaptation is real rather than narrated.</p></div>
   </div>
-  <p class="muted" style="font-size:14px"><strong>Why the auditor is code.</strong> It began as a fifth
-  LLM agent. The rules that gate execution are arithmetic — a date window, a ledger balance, a stock
-  level — and a model re-deriving them each time cost a third of the calls in a case, re-read what the
-  Resolver had already read, and deadlocked by objecting to plans that broke no rule. Code cannot be
-  argued out of a limit by a prompt.</p>
 </section>
 
 <!-- 6 ── THE PRODUCT, CUSTOMER SIDE ─── -->
@@ -578,43 +573,9 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
   </table></div>
 </section>
 
-<!-- 11 ── WHAT THE LIVE MODELS TAUGHT ─ -->
-<section class="slide proof">
-  <div class="eyebrow">10 · What testing against real models changed</div>
-  <h2>The hermetic suite cannot see the agents</h2>
-  <p class="lede">The pytest suite pins <span class="mono">LLM_MODE=offline</span>, which makes it fast
-  and deterministic — and means it exercises the rule engine and <em>never the agents</em>. So there is
-  a third harness that drives a running server over the real provider chain and fails on a wrong end
-  state, an internal error, <strong>or a silent fallback to the rule engine</strong>.</p>
-
-  <div class="tw"><table>
-    <thead><tr><th style="width:330px">What the live chain caught</th><th>What changed</th></tr></thead>
-    <tbody>
-      <tr><td>A 749.00 wrong-item case closed with <b>no money moved</b>, guardrail never tripped</td><td>Intake was classifying the goal as the remedy the customer <em>asked for</em> (<span class="mono">refund</span>) rather than what went wrong (<span class="mono">wrong_item</span>), bypassing every POL-DMG-1 rule</td></tr>
-      <tr><td>“Order ORD-99999 never turned up, refund me” — <b>no such order</b></td><td>The agent had bound the customer’s <em>real</em> order and planned a refund against it. An order number not in the records now stops the case</td></tr>
-      <tr><td>A refund <b>14 days</b> after delivery escalated as “outside the 15-day window”</td><td>The window arithmetic moved out of the model: <span class="mono">get_order</span> now states whether each window is open</td></tr>
-      <tr><td>A flag reading “<b>No</b> explicit delivery dispute or fraud indicators” tripped the fraud gate</td><td>It was substring-matching model prose. Negation is what substring matching cannot see, so POL-FRAUD-1 now reads <span class="mono">claims_90d</span> from the record</td></tr>
-      <tr><td>A stockout answered with a <b>second blocked plan</b>, then a third, then escalation</td><td>Refusals now name the way out — which warehouse holds stock, which remedies would pass the gate, and when an objection has already been ignored once</td></tr>
-    </tbody>
-  </table></div>
-
-  <div class="cols c2">
-    <div class="block s"><h3>One shape, ten times over</h3>
-      <p>Every one was the same failure: <strong>an unverified model assertion was allowed to decide
-      something.</strong> Each fix moved that decision into code reading records — which is why the
-      guardrails, the windows and the fraud rule all now cite a number rather than a sentence.</p></div>
-    <div class="block" style="border-top-color:var(--verify)"><h3>Three harnesses</h3>
-      <p><span class="mono">pytest</span> — 17 hermetic cases, no key needed.<br>
-      <span class="mono">ui_check.js</span> — 49 assertions driving both interfaces in a headless
-      browser, through to approving a plan.<br>
-      <span class="mono">live_check.py</span> — 16 cases on the real chain. Only this one finds agent
-      bugs.</p></div>
-  </div>
-</section>
-
 <!-- 12 ──────────────────────────────── -->
 <section class="slide">
-  <div class="eyebrow">11 · Expected impact</div>
+  <div class="eyebrow">10 · Expected impact</div>
   <h2>Human effort moves to where judgement is actually needed</h2>
   <div class="tw"><table>
     <thead><tr><th style="width:280px">Measure</th><th style="width:230px">Today</th><th>With CasePilot</th></tr></thead>
@@ -640,7 +601,7 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
 
 <!-- 13 ──────────────────────────────── -->
 <section class="slide accent">
-  <div class="eyebrow">12 · Run it yourself</div>
+  <div class="eyebrow">11 · Run it yourself</div>
   <h2>Deployment &amp; source</h2>
   <dl class="kv">
     <dt>Repository</dt><dd><a href="https://github.com/Parth-sarthidubey/Agentic_Customer_Resolution_CasePilot">github.com/Parth-sarthidubey/Agentic_Customer_Resolution_CasePilot</a></dd>
@@ -650,7 +611,7 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
   </dl>
   <div class="cols c3">
     <div class="block"><h3>Stack</h3><p>FastAPI · SQLite × 2 · vanilla JS, no build step · Docker</p></div>
-    <div class="block"><h3>Models</h3><p>Groq, Mistral and Gemini free tiers in turn, with deterministic offline agents beneath. An AWS Bedrock path is implemented and disabled — the account is not yet authorised for model access.</p></div>
+    <div class="block"><h3>Models</h3><p>Groq, Mistral and Gemini free tiers in turn, with deterministic offline agents beneath — so every scenario completes with no API key at all.</p></div>
     <div class="block s"><h3>Cost to run</h3><p class="mono">≈ $0.0025 per case, with a real-time spend cap that disables paid inference when reached</p></div>
   </div>
   <div class="foot">
