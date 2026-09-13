@@ -95,6 +95,17 @@ figure{margin:0}
 svg.dia{width:100%;height:auto;max-width:100%;display:block}
 figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
 
+/* screenshots of the running product */
+.shots{display:grid;gap:20px}
+.shots.two{grid-template-columns:repeat(2,1fr)}
+@media(max-width:780px){.shots.two{grid-template-columns:1fr}}
+.shot{margin:0;display:flex;flex-direction:column;gap:9px;min-width:0}
+.shot img{width:100%;height:auto;display:block;border:1px solid var(--rule);border-radius:3px;
+  background:#fff}
+.shot figcaption{margin-top:0;font-size:13px;line-height:1.5;color:var(--ink-2);max-width:none}
+.shot figcaption b{font-family:var(--display);font-weight:600;color:var(--ink);display:block;
+  font-size:14px;margin-bottom:2px}
+
 /* the trace: the money slide */
 .trace{display:flex;flex-direction:column;gap:0;font-family:var(--mono);font-size:12.5px;
   border-left:2px solid var(--rule);padding-left:0}
@@ -174,9 +185,9 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
     <div class="block s"><h3>Support leads</h3>
       <p>Keep control of the money. Approval thresholds, a queue of exactly what needs a human, and an audit trail of every action and its reason.</p></div>
     <div class="block"><h3>Customers</h3>
-      <p>Get a resolution in seconds instead of a first reply in hours — and a straight explanation when
-      the answer is no. When the agent cannot tell which of your orders you mean, it asks, and offers
-      them by name so one tap answers it. It never guesses which order to refund.</p></div>
+      <p>Get a resolution in seconds instead of a first reply in hours. When the agent cannot tell
+      which of your orders you mean, it asks and offers them by name — it never guesses which order
+      to refund.</p></div>
   </div>
   <p class="muted" style="font-size:14px">Built on a fictional home-goods retailer, <span class="mono">Kestrel Home</span>,
   with nine customers, twelve orders, three warehouses with real transit times, and a nine-policy handbook.</p>
@@ -265,12 +276,12 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
   <div class="eyebrow">04 · Proposed solution</div>
   <h2>Five specialists behind one state machine</h2>
   <div class="tw"><table>
-    <thead><tr><th style="width:150px">Agent</th><th>Responsibility</th><th style="width:180px">Returns</th></tr></thead>
+    <thead><tr><th style="width:150px">Stage</th><th>Responsibility</th><th style="width:180px">Returns</th></tr></thead>
     <tbody>
-      <tr><td><strong>Intake</strong></td><td>Maps a plain-language message to a goal, customer and order; sets priority; asks one clarifying question when the case is genuinely unworkable.</td><td class="mono n">Intake</td></tr>
+      <tr><td><strong>Intake</strong></td><td>Maps a plain-language message to a goal, customer and order; sets priority; and triages — when it cannot tell which order is meant it asks one question, offering the candidates as choices the customer can tap.</td><td class="mono n">Intake</td></tr>
       <tr><td><strong>Investigator</strong></td><td>Chooses its own tools across CRM, orders, inventory, shipping, the payment ledger, the policy handbook and past resolved cases. Returns which remedies are <em>actually eligible</em>, each with a policy reference.</td><td class="mono n">Facts</td></tr>
       <tr><td><strong>Resolver</strong></td><td>Commits to one remedy and emits a typed action plan with an explicit <strong>expected outcome</strong>.</td><td class="mono n">Plan</td></tr>
-      <tr><td><strong>Policy Auditor</strong></td><td>Independently re-checks the plan against the handbook. A plan it never approves is structurally unable to reach the executor.</td><td class="mono n">Review</td></tr>
+      <tr><td><strong>Policy gate</strong><br><span class="muted mono" style="font-size:11px">in code, not a model</span></td><td>Re-checks the plan against the handbook — windows, ledger balances, stock levels, ETAs. It also names the remedies that <em>would</em> pass, so a blocked plan gets a way forward rather than only an objection.</td><td class="mono n">list of breaches</td></tr>
       <tr><td><strong>Communicator</strong></td><td>Writes the customer reply and the internal note, and distils the case into a knowledge-base entry for next time.</td><td class="mono n">Reply</td></tr>
     </tbody>
   </table></div>
@@ -279,16 +290,73 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
     <div class="block proof" style="border-top-color:var(--verify)"><h3>Verifier</h3><p>Reads the systems of record back and decides whether the case may close.</p></div>
     <div class="block s"><h3>World events</h3><p>Conditions change <em>while</em> the agent works, so adaptation is real rather than narrated.</p></div>
   </div>
+  <p class="muted" style="font-size:14px"><strong>Why the auditor is code.</strong> It began as a fifth
+  LLM agent. The rules that gate execution are arithmetic — a date window, a ledger balance, a stock
+  level — and a model re-deriving them each time cost a third of the calls in a case, re-read what the
+  Resolver had already read, and deadlocked by objecting to plans that broke no rule. Code cannot be
+  argued out of a limit by a prompt.</p>
 </section>
 
-<!-- 6 ── ARCHITECTURE ───────────────── -->
+<!-- 6 ── THE PRODUCT, CUSTOMER SIDE ─── -->
+<section class="slide accent">
+  <div class="eyebrow">05 · The product · customer side</div>
+  <h2>Two ways in, and the difference is the point</h2>
+  <p class="lede">A chat has someone sitting at it who can answer a question. A ticket form does not.
+  The same agents run behind both — what changes is whether asking is an option.</p>
+
+  <div class="shots two">
+    <figure class="shot">
+      <img src="ui/portal-chat.png" alt="The Kestrel Home help centre chat. A customer message reads 'something I bought is broken and I want it sorted'. The assistant replies asking which of the customer's recent orders it is about, and offers two tappable choices naming the products: Stoneware Mug Set — ORD-50008 and Linen Table Lamp — ORD-50009.">
+      <figcaption><b>Chat — it asks rather than guesses</b>
+      Sofia has two recent orders, so “something I bought is broken” is not actionable. The agent asks,
+      and offers the candidates <em>by product name</em> — not an order number she would have to go and
+      find. One tap binds the order and the case runs on to a resolution.</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="ui/portal-ticket.png" alt="The New ticket screen of the help centre, with fields for a summary, an order picker listing the customer's own orders by product name, a 'what went wrong' selector, a description, an optional need-by date and a drop zone for photos.">
+      <figcaption><b>Ticket — it asks up front instead</b>
+      Nobody is sitting at a form to answer a clarifying question later, so the form collects what
+      decides the case now: which order, what went wrong, any need-by date. It then runs straight
+      through, exactly like an inbound email.</figcaption>
+    </figure>
+  </div>
+  <p class="muted" style="font-size:14px">Four worked examples sit in the rail so an evaluator can
+  drive it without knowing the sandbox, and each one names the behaviour it is there to show.</p>
+</section>
+
+<!-- 7 ── THE PRODUCT, OPERATOR SIDE ─── -->
 <section class="slide">
-  <div class="eyebrow">05 · System architecture</div>
+  <div class="eyebrow">06 · The product · operator side</div>
+  <h2>Everything the agent did, and why</h2>
+
+  <div class="shots two">
+    <figure class="shot">
+      <img src="ui/desk-board.png" alt="The CasePilot resolution board with six columns: Triage, Investigating, Needs human, Executing, Resolved and With a human. Cards show the channel a case arrived on, its goal, order id, customer and status.">
+      <figcaption><b>The board</b>
+      Six states, and the one that matters is <em>Needs human</em>. Every card shows the channel it
+      arrived on — chat, portal or email — because that decides whether the agent could ask a question.
+      The pill in the top bar names the provider actually answering, and says so when the chain has
+      gone cold and cases are running on rules.</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="ui/desk-case.png" alt="A case stopped at the approval guardrail. An amber banner reads 'Human approval required before this plan can run', quotes the reason 'refund total 749.00 exceeds auto-approval limit 150.00 (POL-REF-1)', lists the exact actions awaiting approval with their parameters, explains why the agent chose them with policy references, and offers Approve and execute or Reject and escalate. Below it the agent work log shows each tool call with its result.">
+      <figcaption><b>A case stopped at the guardrail</b>
+      749.00 is over the limit, so nothing runs until a person decides. The banner shows the exact
+      actions and their parameters, the reasoning, and the policies cited. Beneath it the work log
+      records every tool call and its result — the evidence a supervisor needs to approve in one click
+      rather than re-investigate.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 8 ── ARCHITECTURE ───────────────── -->
+<section class="slide">
+  <div class="eyebrow">07 · System architecture</div>
   <h2>One case, end to end</h2>
 
   <figure>
     <svg class="dia" viewBox="0 0 1280 690" role="img"
-      aria-label="Architecture: a customer portal with a triage chat that asks clarifying questions offering selectable choices, plus a request form, and an agent desk feed a FastAPI layer into the orchestrator state machine, which drives five agents that call read-only tools and a typed write-action catalogue against a simulated enterprise; a verifier reads the systems of record back, a deterministic guardrail routes high-value actions to a human, and a model router falls back through four providers to deterministic offline agents.">
+      aria-label="Architecture: a customer portal with a triage chat and a ticket form, plus an agent desk, feed a FastAPI layer into the orchestrator state machine, which drives five stages that call read-only tools and a typed write-action catalogue against a simulated enterprise; a verifier reads the systems of record back, a deterministic guardrail routes high-value actions to a human, and a model router falls back through providers to deterministic offline agents.">
       <defs>
         <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker>
@@ -310,7 +378,7 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
         <rect x="14" y="34" width="230" height="74" fill="none" stroke="currentColor" stroke-width="1.4"/>
         <text x="28" y="56" font-size="14" font-weight="700">Customer portal</text>
         <text x="28" y="74" font-size="11.5" opacity=".7">triage chat — asks back, offers</text>
-        <text x="28" y="89" font-size="11.5" opacity=".7">choices; or a request form.</text>
+        <text x="28" y="89" font-size="11.5" opacity=".7">choices; or a ticket form.</text>
         <text x="28" y="103" font-size="11.5" opacity=".7">Photos attach to either.</text>
 
         <rect x="14" y="126" width="230" height="88" fill="none" stroke="currentColor" stroke-width="1.4"/>
@@ -329,13 +397,13 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
       <text x="302" y="58" font-family="Archivo,sans-serif" font-size="15" font-weight="700" fill="currentColor">Orchestrator</text>
       <text x="302" y="76" font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor" opacity=".65">agents/orchestrator.py</text>
       <g font-family="JetBrains Mono,monospace" font-size="11" fill="currentColor">
-        <text x="302" y="104">Triage → Investigating → Planning</text>
-        <text x="302" y="122">⇄ Policy&#160;Review → Executing</text>
-        <text x="302" y="140">→ Verifying → Resolved</text>
+        <text x="302" y="104">Triage ⇄ Waiting on Customer</text>
+        <text x="302" y="122">→ Investigating → Planning</text>
+        <text x="302" y="140">⇄ Policy&#160;gate → Executing → Verifying</text>
       </g>
       <rect x="302" y="156" width="298" height="46" fill="none" stroke="#C2410C" stroke-width="1.6"/>
       <text x="314" y="175" font-family="Archivo,sans-serif" font-size="12.5" font-weight="700" fill="#C2410C">Guardrail — decided in Python</text>
-      <text x="314" y="192" font-family="JetBrains Mono,monospace" font-size="10.5" fill="#C2410C">refund &gt; 150 · credit &gt; 50 → human</text>
+      <text x="314" y="192" font-family="JetBrains Mono,monospace" font-size="10.5" fill="#C2410C">refund &gt; 150 · credit &gt; 50 · 3+ claims/90d</text>
       <rect x="302" y="212" width="298" height="42" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"/>
       <text x="314" y="230" font-family="Archivo,sans-serif" font-size="12" font-weight="600" fill="currentColor">Failure handling</text>
       <text x="314" y="246" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".75">3 re-plans · no repeat of a refused action</text>
@@ -344,10 +412,10 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
       <rect x="286" y="300" width="330" height="150" fill="none" stroke="currentColor" stroke-width="1.4"/>
       <text x="302" y="324" font-family="Archivo,sans-serif" font-size="14" font-weight="700" fill="currentColor">Agent crew</text>
       <g font-family="JetBrains Mono,monospace" font-size="11" fill="currentColor">
-        <text x="302" y="348">1 Intake</text>
+        <text x="302" y="348">1 Intake  (triage · choices)</text>
         <text x="302" y="368">2 Investigator</text>
         <text x="302" y="388">3 Resolver</text>
-        <text x="302" y="408">4 Policy Auditor  ⇄ 3</text>
+        <text x="302" y="408">4 Policy gate — code  ⇄ 3</text>
         <text x="302" y="428">5 Communicator</text>
       </g>
       <text x="470" y="348" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".6">prompt + tools</text>
@@ -392,7 +460,7 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
       <text x="1038" y="240" font-family="JetBrains Mono,monospace" font-size="10" fill="#C2410C">gateway 503 — mid-execution</text>
       <text x="1026" y="272" font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor" opacity=".75">OUT_OF_STOCK · EXCEEDS_CAPTURED</text>
       <text x="1026" y="290" font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor" opacity=".75">ORDER_ALREADY_SHIPPED · 503</text>
-      <text x="1026" y="310" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".55">refusals returned to the agent as data</text>
+      <text x="1026" y="310" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" opacity=".55">refusals name the way out, as data</text>
 
       <!-- verifier -->
       <rect x="1010" y="348" width="256" height="102" fill="none" stroke="#0F766E" stroke-width="2"/>
@@ -416,8 +484,8 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
       <rect x="1010" y="486" width="256" height="82" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 3"/>
       <text x="1026" y="510" font-family="JetBrains Mono,monospace" font-size="9.5" font-weight="700" letter-spacing="1.2" fill="#C2410C">MODEL ROUTER</text>
       <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor">
-        <text x="1026" y="532">Bedrock → Groq → Mistral</text>
-        <text x="1026" y="550">→ Gemini → offline rules</text>
+        <text x="1026" y="532">Groq → Mistral → Gemini</text>
+        <text x="1026" y="550">→ deterministic offline rules</text>
       </g>
 
       <!-- flows -->
@@ -457,9 +525,9 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
   </figure>
 </section>
 
-<!-- 7 ── THE MOMENT ─────────────────── -->
+<!-- 9 ── THE MOMENT ─────────────────── -->
 <section class="slide accent">
-  <div class="eyebrow">06 · Goal → decision → action → adaptation → outcome</div>
+  <div class="eyebrow">08 · Goal → decision → action → adaptation → outcome</div>
   <h2>The moment the world moves under the agent</h2>
   <p class="lede">Case <span class="mono">CS-1001</span>. Not a scripted branch — the inventory row
   genuinely changes between planning and reserving, and the service layer genuinely refuses.</p>
@@ -469,7 +537,7 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
     <div class="tr"><span class="who">Decision</span><span>Investigator: 6 tool calls → replacement <b>eligible</b> <span class="chip v">POL-SLA-1</span> · refund 38.00 <b>eligible</b> <span class="chip v">POL-DMG-1</span></span></div>
     <div class="tr"><span class="who">Plan</span><span>Ship <b>KT-220</b> from <b>WH-EAST</b>, ETA 2026-09-14 — beats the deadline</span></div>
     <div class="tr env"><span class="who">Environment</span><span><b>The last KT-220 in WH-EAST was sold through the marketplace channel</b></span></div>
-    <div class="tr fail"><span class="who">Refused</span><span><b>create_replacement</b> → <span class="chip h">OUT_OF_STOCK</span></span></div>
+    <div class="tr fail"><span class="who">Refused</span><span><b>create_replacement</b> → <span class="chip h">OUT_OF_STOCK</span> — <em>and the refusal names where stock actually is</em></span></div>
     <div class="tr env"><span class="who">Adapt</span><span>Re-plan, attempt 2 of 3. WH-WEST <em>has</em> stock — but 6 days transit arrives <b>2026-09-17</b>, after the deadline</span></div>
     <div class="tr"><span class="who">Action</span><span>Refund <b>38.00</b> rather than promise something late <span class="chip s">POL-DMG-1</span></span></div>
     <div class="tr ok"><span class="who">Verified</span><span><b>refund_posted</b> expected 38.00, ledger shows 38.00 · <b>no_over_refund</b> 38.00 of 70.00 captured · <b>customer_notified</b></span></div>
@@ -479,17 +547,18 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
   arrived after their birthday, so the money went back instead. No jargon, no invented promise.</p>
 </section>
 
-<!-- 8 ───────────────────────────────── -->
+<!-- 10 ──────────────────────────────── -->
 <section class="slide proof">
-  <div class="eyebrow">07 · Verification, guardrails, restraint</div>
+  <div class="eyebrow">09 · Verification, guardrails, restraint</div>
   <h2>Done is a fact, not a claim</h2>
   <div class="cols c3">
     <div class="block" style="border-top-color:var(--verify)"><h3>Verified in SQL</h3>
-      <p>Seven checks against the systems of record, including a <span class="mono">no_over_refund</span>
+      <p>Checks against the systems of record, including a <span class="mono">no_over_refund</span>
       invariant on <em>every</em> case. A failed check re-enters planning — it is not a warning.</p></div>
-    <div class="block s"><h3>Guardrails in code</h3>
-      <p>Refund &gt; 150, credit &gt; 50, or a fraud flag freezes the plan for a human. The model is
-      never asked whether approval is needed, so no message can widen the limit.</p></div>
+    <div class="block s"><h3>Guardrails read records</h3>
+      <p>Refund &gt; 150, credit &gt; 50, or three claims in ninety days freezes the plan for a human.
+      Every threshold reads a number out of the database; the model is never asked whether approval
+      is needed.</p></div>
     <div class="block"><h3>Knowing when to stop</h3>
       <p>Two of eight demo cases end in <em>not acting</em>: an escalation with evidence, and a
       clarifying question. Both are correct outcomes.</p></div>
@@ -504,14 +573,48 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
       <tr><td>Wrong high-value item</td><td>749.00 exceeds the auto-approval limit</td><td><span class="chip s">PAUSES</span> for a supervisor</td></tr>
       <tr><td>Lost package</td><td>Tracking 7 days past ETA</td><td><span class="chip v">RE-SHIPS</span> nearest warehouse</td></tr>
       <tr><td>Suspicious claim</td><td>Photo proof of delivery + 4 claims in 90 days</td><td><span class="chip h">REFUSES</span> escalates with evidence</td></tr>
-      <tr><td>Vague request</td><td>Two recent orders, no item named</td><td><span class="chip h">ASKS</span> resumes on the reply</td></tr>
+      <tr><td>Vague request</td><td>Two recent orders, no item named</td><td><span class="chip h">ASKS</span> offers both by name, resumes on a tap</td></tr>
     </tbody>
   </table></div>
 </section>
 
-<!-- 9 ───────────────────────────────── -->
+<!-- 11 ── WHAT THE LIVE MODELS TAUGHT ─ -->
+<section class="slide proof">
+  <div class="eyebrow">10 · What testing against real models changed</div>
+  <h2>The hermetic suite cannot see the agents</h2>
+  <p class="lede">The pytest suite pins <span class="mono">LLM_MODE=offline</span>, which makes it fast
+  and deterministic — and means it exercises the rule engine and <em>never the agents</em>. So there is
+  a third harness that drives a running server over the real provider chain and fails on a wrong end
+  state, an internal error, <strong>or a silent fallback to the rule engine</strong>.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th style="width:330px">What the live chain caught</th><th>What changed</th></tr></thead>
+    <tbody>
+      <tr><td>A 749.00 wrong-item case closed with <b>no money moved</b>, guardrail never tripped</td><td>Intake was classifying the goal as the remedy the customer <em>asked for</em> (<span class="mono">refund</span>) rather than what went wrong (<span class="mono">wrong_item</span>), bypassing every POL-DMG-1 rule</td></tr>
+      <tr><td>“Order ORD-99999 never turned up, refund me” — <b>no such order</b></td><td>The agent had bound the customer’s <em>real</em> order and planned a refund against it. An order number not in the records now stops the case</td></tr>
+      <tr><td>A refund <b>14 days</b> after delivery escalated as “outside the 15-day window”</td><td>The window arithmetic moved out of the model: <span class="mono">get_order</span> now states whether each window is open</td></tr>
+      <tr><td>A flag reading “<b>No</b> explicit delivery dispute or fraud indicators” tripped the fraud gate</td><td>It was substring-matching model prose. Negation is what substring matching cannot see, so POL-FRAUD-1 now reads <span class="mono">claims_90d</span> from the record</td></tr>
+      <tr><td>A stockout answered with a <b>second blocked plan</b>, then a third, then escalation</td><td>Refusals now name the way out — which warehouse holds stock, which remedies would pass the gate, and when an objection has already been ignored once</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="cols c2">
+    <div class="block s"><h3>One shape, ten times over</h3>
+      <p>Every one was the same failure: <strong>an unverified model assertion was allowed to decide
+      something.</strong> Each fix moved that decision into code reading records — which is why the
+      guardrails, the windows and the fraud rule all now cite a number rather than a sentence.</p></div>
+    <div class="block" style="border-top-color:var(--verify)"><h3>Three harnesses</h3>
+      <p><span class="mono">pytest</span> — 17 hermetic cases, no key needed.<br>
+      <span class="mono">ui_check.js</span> — 49 assertions driving both interfaces in a headless
+      browser, through to approving a plan.<br>
+      <span class="mono">live_check.py</span> — 16 cases on the real chain. Only this one finds agent
+      bugs.</p></div>
+  </div>
+</section>
+
+<!-- 12 ──────────────────────────────── -->
 <section class="slide">
-  <div class="eyebrow">08 · Expected impact</div>
+  <div class="eyebrow">11 · Expected impact</div>
   <h2>Human effort moves to where judgement is actually needed</h2>
   <div class="tw"><table>
     <thead><tr><th style="width:280px">Measure</th><th style="width:230px">Today</th><th>With CasePilot</th></tr></thead>
@@ -519,7 +622,7 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
       <tr><td>Time to first meaningful response</td><td class="n">hours</td><td class="n">seconds</td></tr>
       <tr><td>Handling time, routine case</td><td class="n">8–15 min of human work</td><td>fully automated, or one approval click</td></tr>
       <tr><td>Actions taken without verification</td><td class="n">most</td><td class="n">none — every case checked against the ledger</td></tr>
-      <tr><td>Policy consistency</td><td>varies by agent and by day</td><td>one handbook, independently audited every time</td></tr>
+      <tr><td>Policy consistency</td><td>varies by agent and by day</td><td>one handbook, enforced in code every time</td></tr>
       <tr><td>Institutional memory</td><td>lives in individual heads</td><td>a knowledge-base entry per resolved case</td></tr>
     </tbody>
   </table></div>
@@ -529,25 +632,25 @@ figcaption{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:76ch}
       enforced, actions genuinely refused, state persisted. Swapping in real APIs touches
       <span class="mono">sandbox/services.py</span> alone; nothing in the agent layer assumes a simulation.</p></div>
     <div class="block"><h3>Built for weak models</h3>
-      <p>Typed output contracts, an independent auditor, code-enforced guardrails, objective
-      verification and bounded retries. Correctness does not rest on the model being clever —
-      and a deterministic fallback completes every scenario with no API key at all.</p></div>
+      <p>Typed output contracts, a code-enforced policy gate, objective verification and bounded
+      retries. Correctness does not rest on the model being clever — and a deterministic fallback
+      completes every scenario with no API key at all.</p></div>
   </div>
 </section>
 
-<!-- 10 ──────────────────────────────── -->
+<!-- 13 ──────────────────────────────── -->
 <section class="slide accent">
-  <div class="eyebrow">09 · Run it yourself</div>
+  <div class="eyebrow">12 · Run it yourself</div>
   <h2>Deployment &amp; source</h2>
   <dl class="kv">
     <dt>Repository</dt><dd><a href="https://github.com/Parth-sarthidubey/Agentic_Customer_Resolution_CasePilot">github.com/Parth-sarthidubey/Agentic_Customer_Resolution_CasePilot</a></dd>
     <dt>Hosted</dt><dd>Web application on Render — the agent desk and the customer portal, live</dd>
     <dt>Local</dt><dd><span class="mono">uv run uvicorn app.main:app --port 8000</span> — no API key required</dd>
-    <dt>Tests</dt><dd><span class="mono">uv run pytest</span> — 10 end-to-end tests, hermetic, every scenario asserted against enterprise state</dd>
+    <dt>Tests</dt><dd><span class="mono">uv run pytest</span> — 17 hermetic end-to-end cases · <span class="mono">node scripts/ui_check.js</span> — 49 interface assertions · <span class="mono">python scripts/live_check.py</span> — 16 cases against the real model chain</dd>
   </dl>
   <div class="cols c3">
-    <div class="block"><h3>Stack</h3><p>FastAPI · SQLite × 2 · vanilla JS desk with no build step · Docker</p></div>
-    <div class="block"><h3>Models</h3><p>AWS Bedrock, Groq, Mistral, Gemini — all free tiers, with a deterministic fallback beneath</p></div>
+    <div class="block"><h3>Stack</h3><p>FastAPI · SQLite × 2 · vanilla JS, no build step · Docker</p></div>
+    <div class="block"><h3>Models</h3><p>Groq, Mistral and Gemini free tiers in turn, with deterministic offline agents beneath. An AWS Bedrock path is implemented and disabled — the account is not yet authorised for model access.</p></div>
     <div class="block s"><h3>Cost to run</h3><p class="mono">≈ $0.0025 per case, with a real-time spend cap that disables paid inference when reached</p></div>
   </div>
   <div class="foot">
