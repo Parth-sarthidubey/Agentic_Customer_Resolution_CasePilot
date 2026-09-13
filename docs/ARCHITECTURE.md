@@ -232,11 +232,27 @@ The approval gate is `policy.approval_reasons()`, pure Python with no model in t
 
 - refund total > **150.00** → human (POL-REF-1)
 - store credit > **50.00** → human (POL-GW-1)
-- a fraud/claims risk flag from the Investigator → human (POL-FRAUD-1)
+- **3 or more claims in the last 90 days**, or a `where_is_my_order` claim against a shipment the
+  carrier marked delivered *with proof* → human (POL-FRAUD-1)
 
-When it trips, the orchestrator freezes the entire context into a `proposals` row and stops. A
+Every one of those reads a number out of the records. That is a deliberate correction: POL-FRAUD-1
+used to fire on any Investigator risk flag containing the words "fraud" or "claims", and a live run
+produced the flag *"No explicit delivery dispute or fraud indicators"* — which says the opposite —
+holding a correct re-shipment for approval. Negation is exactly what substring matching cannot see,
+and a guardrail that fires on the sentence saying it should not fire trains everyone to wave the
+approval through. The Investigator's prose stays in the work log as the reasoning it is; it decides
+nothing.
+
+When the gate trips, the orchestrator freezes the entire context into a `proposals` row and stops. A
 supervisor approving in the desk resumes the loop **with that exact plan**, pre-approved; rejecting
 escalates. No prompt injection can widen these limits, because the model is never asked.
+
+**Escalating is itself a claim that gets checked.** A plan with `decision: escalate` returns before
+the policy gate, which made the reason for escalating the one assertion nothing verified — live, a
+refund fourteen days after delivery was escalated as "outside the 15-day window". The orchestrator
+now pushes back once when the Investigator found a remedy that is eligible and raised no risk flag,
+quoting those options back and asking the Resolver to re-check its dates. A genuine claims-review
+case, which has both a risk flag and no eligible remedy, still goes straight up.
 
 ---
 
