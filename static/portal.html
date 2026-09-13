@@ -8,126 +8,196 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    /* Kestrel Home Help Centre. Warm retail identity, deliberately unlike the indigo agent
+       desk: the customer should never feel routed into someone's internal tooling. */
     :root {
       --ink: #2B2118; --ink-2: #6B5E53; --ink-3: #9A8B7D;
-      --line: #E8DFD5; --bg: #FBF7F2; --card: #FFFFFF;
-      --accent: #B4532A; --accent-2: #8E3F1F; --soft: #F4E9DE;
-      --ok: #2F7D4F; --ok-bg: #E6F3EA; --warn: #9A6B12; --warn-bg: #FBF0DA;
-      --shadow: 0 1px 2px rgba(43,33,24,.04), 0 8px 24px rgba(43,33,24,.06);
+      --line: #EAE1D7; --line-soft: #F1EAE2;
+      --bg: #FBF7F2; --card: #FFFFFF;
+      --accent: #B4532A; --accent-2: #8E3F1F; --accent-tint: #FBF1EA;
+      --soft: #F5EBE1;
+      --ok: #2F7D4F; --ok-bg: #E8F2EB;
+      --warn: #8A6215; --warn-bg: #FAF0DC;
+      --shadow: 0 1px 2px rgba(43,33,24,.03), 0 10px 30px -12px rgba(43,33,24,.10);
+      --serif: Fraunces, "Newsreader", Georgia, serif;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    body { margin: 0; background: var(--bg); color: var(--ink);
+           font: 15px/1.55 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
     [hidden] { display: none !important; }
     button, input, textarea, select { font: inherit; color: inherit; }
+    ::selection { background: var(--soft); }
 
+    /* ---------- header ---------- */
     header { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
-    .bar { max-width: 1140px; margin: 0 auto; padding: 13px 20px; display: flex; align-items: center; gap: 14px; }
-    .brand { font-family: Fraunces, Georgia, serif; font-size: 21px; font-weight: 600; letter-spacing: -.01em; }
+    .bar { max-width: 1180px; margin: 0 auto; padding: 15px 24px; display: flex; align-items: center; gap: 14px; }
+    .brand { font-family: var(--serif); font-size: 21px; font-weight: 600; letter-spacing: -.015em; }
     .brand span { color: var(--accent); }
+    .helplabel { font-size: 10.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+                 color: var(--ink-3); padding-left: 14px; border-left: 1px solid var(--line); }
     .spacer { flex: 1; }
-    .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
-    .who select { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; background: #fff; }
+    .who { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--ink-2); }
+    .who select { border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; background: var(--bg); cursor: pointer; }
+    .who select:hover { border-color: #DCCBBB; }
 
-    main { max-width: 1140px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: 268px 1fr; gap: 20px; align-items: start; }
-    @media (max-width: 880px) { main { grid-template-columns: 1fr; padding: 14px; } .side { order: 2; } }
+    /* ---------- shell ---------- */
+    main { max-width: 1180px; margin: 0 auto; padding: 26px 24px 8px;
+           display: grid; grid-template-columns: 272px 1fr; gap: 24px; align-items: start; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 16px; } .side { order: 2; } }
 
-    .side { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
-    .side h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); margin: 4px 2px 10px; font-weight: 600; }
-    .newbtn { width: 100%; border: 0; border-radius: 12px; padding: 11px 14px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .side { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; box-shadow: var(--shadow); }
+    .side h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .14em; color: var(--ink-3);
+               margin: 4px 2px 10px; font-weight: 600; }
+    .newbtn { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; background: var(--accent);
+              color: #fff; font-weight: 600; font-size: 14px; cursor: pointer;
+              display: flex; align-items: center; justify-content: center; gap: 8px; transition: background .14s; }
     .newbtn:hover { background: var(--accent-2); }
-    .req { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; border-radius: 11px; padding: 10px 11px; margin-bottom: 3px; cursor: pointer; }
-    .req:hover { background: var(--bg); }
-    .req.on { background: #FFFCF8; border-color: #EBD8C9; }
-    .req .t { font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .req .rm { font-size: 11.5px; color: var(--ink-3); display: flex; gap: 7px; margin-top: 3px; align-items: center; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); flex: none; }
-    .dot.live { background: var(--accent); animation: pulse 1.4s infinite; }
-    .dot.done { background: var(--ok); }
-    .dot.wait { background: var(--warn); }
-    @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+    .altlink { width: 100%; border: 0; background: none; color: var(--ink-2); font-size: 12.5px; cursor: pointer;
+               padding: 10px 4px 2px; text-decoration: underline; text-underline-offset: 3px;
+               text-decoration-color: #D9C8B8; }
+    .altlink:hover { color: var(--accent); text-decoration-color: currentColor; }
 
-    .chat { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 74vh; max-height: 84vh; overflow: hidden; }
-    .chat-head { padding: 13px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    #head { display: flex; align-items: center; gap: 10px; min-width: 0; }
-    .caseid { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; }
-    .chat-head .ttl { font-weight: 600; font-size: 13.5px; max-width: 30ch; overflow: hidden;
+    .req { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: transparent;
+           border-radius: 12px; padding: 11px 12px; margin-bottom: 2px; cursor: pointer; transition: background .12s; }
+    .req:hover { background: var(--bg); }
+    .req.on { background: var(--accent-tint); border-color: #EEDCCD; }
+    .req .t { font-weight: 500; font-size: 14px; line-height: 1.35; overflow: hidden;
+              text-overflow: ellipsis; white-space: nowrap; }
+    .req .rm { font-size: 11.5px; color: var(--ink-3); display: flex; gap: 7px; margin-top: 4px; align-items: center; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); flex: none; }
+    .dot.live { background: var(--accent); animation: pulse 1.5s ease-in-out infinite; }
+    .dot.done { background: var(--ok); }
+    .dot.wait { background: #C08A2E; }
+    @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .2 } }
+
+    .railnote { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft);
+                font-size: 11.5px; line-height: 1.5; color: var(--ink-3); display: flex; gap: 8px; }
+    .railnote svg { flex: none; margin-top: 2px; color: var(--ok); }
+
+    /* ---------- the card ---------- */
+    .chat { background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow);
+            display: flex; flex-direction: column; min-height: 76vh; max-height: 84vh; overflow: hidden; }
+    .chat-head { padding: 13px 18px; border-bottom: 1px solid var(--line-soft);
+                 display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .switch { display: flex; gap: 3px; padding: 3px; background: var(--bg); border-radius: 999px; border: 1px solid var(--line); }
+    .switch button { border: 0; background: none; border-radius: 999px; padding: 7px 17px; font-size: 13px;
+                     font-weight: 600; color: var(--ink-2); cursor: pointer; transition: .14s; }
+    .switch button.on { background: var(--accent); color: #fff; }
+    .switch button:not(.on):hover { color: var(--accent); background: var(--accent-tint); }
+
+    #head { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .caseid { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; line-height: 1.3; }
+    .chat-head .ttl { font-weight: 600; font-size: 13.5px; max-width: 32ch; overflow: hidden;
                       text-overflow: ellipsis; white-space: nowrap; }
     .chat-head .sub { font-size: 11.5px; color: var(--ink-3); }
-    @media (max-width: 620px) { .caseid .ttl { max-width: 14ch; } }
-    .badge { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 3px 10px; background: var(--soft); color: var(--accent-2); }
+    @media (max-width: 640px) { .caseid .ttl { max-width: 13ch; } }
+
+    .badge { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 4px 11px;
+             background: var(--soft); color: var(--accent-2); white-space: nowrap; }
     .badge.done { background: var(--ok-bg); color: var(--ok); }
     .badge.wait { background: var(--warn-bg); color: var(--warn); }
 
-    .thread { flex: 1; overflow-y: auto; padding: 20px 18px; display: flex; flex-direction: column; gap: 12px; }
-    .m { max-width: 78%; padding: 10px 14px; border-radius: 16px; background: var(--soft); white-space: pre-wrap; word-wrap: break-word; }
-    .m.me { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 5px; }
-    .m.them { align-self: flex-start; background: var(--soft); border-bottom-left-radius: 5px; }
-    .m .n { font-size: 11px; opacity: .7; margin-bottom: 3px; font-weight: 600; letter-spacing: .02em; }
-    .m .tm { font-size: 10.5px; opacity: .55; margin-top: 4px; }
+    /* ---------- conversation ---------- */
+    .thread { flex: 1; overflow-y: auto; padding: 22px 20px; display: flex; flex-direction: column; gap: 13px; }
+    .thread::-webkit-scrollbar { width: 10px; }
+    .thread::-webkit-scrollbar-thumb { background: #E6DCD1; border-radius: 99px; border: 3px solid var(--card); }
 
-    .chips { align-self: flex-start; display: flex; flex-wrap: wrap; gap: 8px; max-width: 88%; margin: -2px 0 2px; }
-    .chip { border: 1.5px solid #E0CDBD; background: #fff; color: var(--accent-2); border-radius: 999px; padding: 8px 15px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: .12s; }
+    .daychip { align-self: center; font-size: 10.5px; font-weight: 600; letter-spacing: .1em;
+               text-transform: uppercase; color: var(--ink-3); background: var(--bg);
+               border: 1px solid var(--line-soft); border-radius: 999px; padding: 4px 13px; margin: 2px 0; }
+
+    .m { max-width: 74%; padding: 11px 15px; border-radius: 18px; background: var(--soft);
+         white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
+    .m.me { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 6px; }
+    .m.them { align-self: flex-start; background: var(--soft); border-bottom-left-radius: 6px; }
+    .m .n { font-size: 11px; opacity: .72; margin-bottom: 4px; font-weight: 600; letter-spacing: .02em;
+            display: flex; align-items: center; gap: 6px; }
+    .m .n .av { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: #fff;
+                display: inline-grid; place-items: center; font-size: 8.5px; font-weight: 700; letter-spacing: 0; }
+    .m.me .n { justify-content: flex-end; }
+    .m .tm { font-size: 10.5px; opacity: .55; margin-top: 5px; }
+
+    .chips-hint { align-self: flex-start; font-size: 11.5px; color: var(--ink-3); margin: 2px 0 -5px 2px; }
+    .chips { align-self: flex-start; display: flex; flex-wrap: wrap; gap: 8px; max-width: 88%; margin-bottom: 2px; }
+    .chip { border: 1.5px solid #E5D2C2; background: var(--card); color: var(--accent-2); border-radius: 999px;
+            padding: 9px 16px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: .14s; }
     .chip:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .chip:disabled { opacity: .45; cursor: default; }
-    .chips-hint { align-self: flex-start; font-size: 11.5px; color: var(--ink-3); margin-bottom: -4px; }
+    .chip:disabled { opacity: .4; cursor: default; }
+    .chip:disabled:hover { background: var(--card); color: var(--accent-2); border-color: #E5D2C2; }
 
-    .typing { align-self: flex-start; color: var(--ink-2); font-size: 13px; display: flex; align-items: center; gap: 9px; background: var(--bg); border-radius: 14px; padding: 9px 14px; }
+    .typing { align-self: flex-start; color: var(--ink-2); font-size: 13px; display: flex; align-items: center;
+              gap: 10px; background: var(--bg); border: 1px solid var(--line-soft); border-radius: 16px; padding: 10px 15px; }
     .tdots { display: inline-flex; gap: 3px; }
-    .tdots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: block; animation: bounce 1.2s infinite; }
-    .tdots i:nth-child(2) { animation-delay: .15s } .tdots i:nth-child(3) { animation-delay: .3s }
-    @keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity: .45 } 30% { transform: translateY(-4px); opacity: 1 } }
+    .tdots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: block;
+               animation: bounce 1.25s ease-in-out infinite; }
+    .tdots i:nth-child(2) { animation-delay: .16s } .tdots i:nth-child(3) { animation-delay: .32s }
+    @keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity: .4 } 30% { transform: translateY(-5px); opacity: 1 } }
 
-    .welcome { margin: auto; text-align: center; max-width: 440px; padding: 20px; }
-    .welcome h1 { font-family: Fraunces, Georgia, serif; font-size: 27px; font-weight: 500; margin: 0 0 8px; }
-    .welcome p { color: var(--ink-2); margin: 0 0 20px; }
+    .thumbs { align-self: flex-end; display: flex; gap: 7px; flex-wrap: wrap; }
+    .thumbs img { width: 78px; height: 78px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
+
+    /* ---------- welcome ---------- */
+    .welcome { margin: auto; text-align: center; max-width: 460px; padding: 24px; }
+    .welcome h1 { font-family: var(--serif); font-size: 30px; font-weight: 500; margin: 0 0 10px; letter-spacing: -.01em; }
+    .welcome p { color: var(--ink-2); margin: 0 0 22px; line-height: 1.6; }
     .starters { display: flex; flex-direction: column; gap: 8px; }
-    .starter { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 11px 15px; text-align: left; cursor: pointer; font-size: 14px; }
-    .starter:hover { border-color: var(--accent); background: #FFFCF8; }
+    .starter { border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 12px 16px;
+               text-align: left; cursor: pointer; font-size: 14px; transition: .14s; }
+    .starter:hover { border-color: var(--accent); background: var(--accent-tint); }
 
-    .composer { border-top: 1px solid var(--line); padding: 12px 14px; display: flex; gap: 9px; align-items: flex-end; background: var(--card); }
-    .composer textarea { flex: 1; border: 1px solid var(--line); border-radius: 14px; padding: 11px 14px; resize: none; min-height: 46px; max-height: 140px; background: var(--bg); }
-    .composer textarea:focus { outline: 2px solid rgba(180,83,42,.2); border-color: var(--accent); background: #fff; }
-    .icon-btn { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; width: 44px; height: 46px; cursor: pointer; display: grid; place-items: center; color: var(--ink-2); flex: none; }
-    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .send { border: 0; background: var(--accent); color: #fff; border-radius: 12px; width: 46px; height: 46px; cursor: pointer; display: grid; place-items: center; flex: none; }
-    .send:hover { background: var(--accent-2); } .send:disabled { opacity: .4; cursor: default; }
-    .files { padding: 0 16px 8px; font-size: 12px; color: var(--ink-2); display: flex; gap: 8px; flex-wrap: wrap; }
-    .fchip { background: var(--soft); border-radius: 999px; padding: 3px 10px; }
-    .thumbs { align-self: flex-end; display: flex; gap: 6px; flex-wrap: wrap; }
-    .thumbs img { width: 74px; height: 74px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
-    .switch { display: flex; gap: 4px; padding: 4px; background: var(--bg); border-radius: 999px; border: 1px solid var(--line); }
-    .switch button { border: 0; background: none; border-radius: 999px; padding: 7px 16px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
-    .switch button.on { background: var(--accent); color: #fff; }
-    .switch button:not(.on):hover { color: var(--accent); }
-    .formview { padding: 24px; overflow-y: auto; }
-    .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media (max-width: 620px) { .frow { grid-template-columns: 1fr; } }
-    .fld select { width: 100%; border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; background: var(--bg); }
-    .hint { font-size: 12px; color: var(--ink-3); margin-top: 5px; }
-    .fnote { background: var(--soft); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--ink-2); margin-bottom: 18px; }
+    /* ---------- composer ---------- */
+    .composer { border-top: 1px solid var(--line-soft); padding: 13px 16px 6px; display: flex; gap: 10px;
+                align-items: flex-end; background: var(--card); }
+    .composer textarea { flex: 1; border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px;
+                         resize: none; min-height: 48px; max-height: 140px; background: var(--bg); line-height: 1.5; }
+    .composer textarea:focus { outline: 2px solid rgba(180,83,42,.18); border-color: var(--accent); background: var(--card); }
+    .icon-btn { border: 1px solid var(--line); background: var(--bg); border-radius: 13px; width: 46px; height: 48px;
+                cursor: pointer; display: grid; place-items: center; color: var(--ink-2); flex: none; transition: .14s; }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
+    .send { border: 0; background: var(--accent); color: #fff; border-radius: 50%; width: 48px; height: 48px;
+            cursor: pointer; display: grid; place-items: center; flex: none; transition: .14s; }
+    .send:hover { background: var(--accent-2); transform: translateY(-1px); }
+    .send:disabled { opacity: .35; cursor: default; transform: none; }
+    .trust { text-align: center; font-size: 10.5px; color: var(--ink-3); padding: 4px 0 10px; background: var(--card); }
+    .files { padding: 0 18px 8px; font-size: 12px; color: var(--ink-2); display: flex; gap: 8px; flex-wrap: wrap; }
+    .fchip { background: var(--soft); border-radius: 999px; padding: 4px 11px; }
+    .closed { text-align: center; font-size: 13px; color: var(--ink-2); padding: 13px 18px;
+              border-top: 1px solid var(--line-soft); background: var(--bg); }
+
+    /* ---------- ticket form ---------- */
+    .formview { padding: 28px 26px; overflow-y: auto; }
+    .formview h1 { font-family: var(--serif); font-size: 26px; font-weight: 500; margin: 0 0 6px; letter-spacing: -.01em; }
+    .formview .lede { color: var(--ink-2); margin: 0 0 20px; font-size: 14px; line-height: 1.6; max-width: 52ch; }
+    .fnote { background: var(--accent-tint); border: 1px solid #F0DFD2; border-radius: 14px; padding: 13px 16px;
+             font-size: 13px; color: var(--ink-2); margin-bottom: 22px; line-height: 1.55; }
     .fnote b { color: var(--ink); }
-    .formview h1 { font-family: Fraunces, Georgia, serif; font-size: 24px; font-weight: 500; margin: 0 0 4px; }
-    .formview .lede { color: var(--ink-2); margin: 0 0 20px; font-size: 14px; }
-    .fld { margin-bottom: 15px; }
-    .fld label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--ink-2); }
-    .fld input, .fld textarea { width: 100%; border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; background: var(--bg); }
-    .fld input:focus, .fld textarea:focus { outline: 2px solid rgba(180,83,42,.2); border-color: var(--accent); background: #fff; }
-    .fld textarea { min-height: 120px; resize: vertical; }
-    .drop { border: 1.5px dashed #D6C6B6; border-radius: 12px; padding: 15px; text-align: center; color: var(--ink-2); font-size: 13px; cursor: pointer; background: var(--bg); }
-    .drop:hover, .drop.over { background: var(--soft); border-color: var(--accent); }
-    .btn { border: 0; border-radius: 999px; padding: 11px 22px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+    .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 660px) { .frow { grid-template-columns: 1fr; } }
+    .fld { margin-bottom: 17px; }
+    .fld label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 7px; color: var(--ink-2); }
+    .fld input, .fld textarea, .fld select { width: 100%; border: 1px solid var(--line); border-radius: 12px;
+                                             padding: 12px 14px; background: var(--bg); }
+    .fld input:focus, .fld textarea:focus, .fld select:focus { outline: 2px solid rgba(180,83,42,.18);
+                                                               border-color: var(--accent); background: var(--card); }
+    .fld textarea { min-height: 128px; resize: vertical; line-height: 1.55; }
+    .fld select { cursor: pointer; }
+    .hint { font-size: 11.5px; color: var(--ink-3); margin-top: 6px; }
+    .drop { border: 1.5px dashed #DCC9B8; border-radius: 14px; padding: 18px; text-align: center;
+            color: var(--ink-2); font-size: 13px; cursor: pointer; background: var(--bg); transition: .14s; }
+    .drop:hover, .drop.over { background: var(--accent-tint); border-color: var(--accent); }
+    .btn { border: 0; border-radius: 999px; padding: 13px 26px; background: var(--accent); color: #fff;
+           font-weight: 600; cursor: pointer; transition: background .14s; }
     .btn:hover { background: var(--accent-2); }
-    .altlink { width: 100%; border: 0; background: none; color: var(--ink-2); font-size: 12.5px; cursor: pointer; padding: 9px 4px 2px; text-decoration: underline; text-underline-offset: 2px; }
-    .altlink:hover { color: var(--accent); }
-    .closed { text-align: center; font-size: 13px; color: var(--ink-2); padding: 12px 16px; border-top: 1px solid var(--line); background: var(--bg); }
-    footer { text-align: center; color: var(--ink-3); font-size: 12px; padding: 22px; }
+
+    footer { text-align: center; color: var(--ink-3); font-size: 12px; padding: 26px; }
     .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   </style>
 </head>
 <body>
   <header><div class="bar">
     <div class="brand">Kestrel <span>Home</span></div>
+    <span class="helplabel">Help Centre</span>
     <div class="spacer"></div>
     <div class="who"><label for="me">Signed in as</label><select id="me"></select></div>
   </div></header>
@@ -141,6 +211,12 @@
       <button class="altlink" id="newform">Or submit a request form</button>
       <h2 style="margin-top:14px">Your requests</h2>
       <div id="list"></div>
+      <div class="railnote">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span>All orders are covered by the Kestrel 30-day home pledge. Replacements and refunds are
+        processed the moment they are agreed.</span>
+      </div>
     </aside>
 
     <section class="chat">
@@ -205,6 +281,7 @@
         <textarea id="msg" placeholder="Describe what happened — we'll take it from there…" rows="1"></textarea>
         <button class="send" id="send" title="Send"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
       </div>
+      <div class="trust">Private conversation · Kestrel Home Support</div>
       <div class="closed" id="closed" hidden></div>
     </section>
   </main>
@@ -384,10 +461,15 @@ async function render() {
   const chips = (last && last.sender === "agent" && d.case.status === "Waiting on Customer"
                  && (last.meta || {}).choices) || [];
 
+  let lastDay = "";
   const html = d.messages.map((m) => {
     const isMine = m.sender === "customer";
-    return `<div class="m ${isMine ? "me" : "them"}">
-      <div class="n">${isMine ? "You" : "Kestrel Support"}</div>${esc(m.body)}
+    const day = dayOf(m.created_at);
+    const divider = day && day !== lastDay ? `<div class="daychip">${esc(day)}</div>` : "";
+    lastDay = day || lastDay;
+    const who = isMine ? "You" : `<span class="av">KH</span>Kestrel Support`;
+    return `${divider}<div class="m ${isMine ? "me" : "them"}">
+      <div class="n">${who}</div>${esc(m.body)}
       <div class="tm">${when(m.created_at)}</div></div>`;
   }).join("")
     + (d.attachments.length ? `<div class="thumbs">${d.attachments.map((a) => a.content_type.startsWith("image/")
@@ -436,6 +518,16 @@ function renderWelcome() {
     lastRender = html;
     document.querySelectorAll(".starter").forEach((b) => (b.onclick = () => { msg.value = b.dataset.s; msg.focus(); }));
   }
+}
+
+function dayOf(iso) {
+  if (!iso) return "";
+  const d = new Date(iso), now = new Date();
+  const same = (a, b) => a.toDateString() === b.toDateString();
+  if (same(d, now)) return "Today";
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (same(d, y)) return "Yesterday";
+  return d.toLocaleDateString([], { day: "numeric", month: "long" });
 }
 
 function when(iso) {
