@@ -224,8 +224,31 @@ def _make_plan(cid: int, it: Intake, facts: Facts, history: list[dict[str, Any]]
     # escalation. Keep the last plan that was actually executable so a stalemate can fall back
     # to it rather than to the surrender.
     last_exec: Plan | None = None
+    challenged = False
     for round_ in range(1, config.MAX_AUDIT_ROUNDS + 1):
         if plan.decision == "escalate":
+            # An escalation skips the policy gate entirely, so a wrong reason for escalating is
+            # the one claim nothing checks. Live: a refund inside the 15-day electronics window
+            # was escalated as "outside the 15-day window" - the model simply got the arithmetic
+            # wrong, and a customer owed a refund would have waited on a human for nothing.
+            # One push-back, and only when the investigation actually found a remedy that is
+            # eligible and flagged no risk; a genuine claims-review case still goes straight up.
+            eligible = [o for o in facts.options if o.eligible and o.option]
+            if not challenged and eligible and not facts.risk_flags:
+                challenged = True
+                feedback = ("You chose to escalate, but the investigation found remedies that are "
+                            "already eligible under policy: "
+                            + "; ".join(f"{o.option} ({o.policy_ref or 'n/a'}) - {o.reason}" for o in eligible)
+                            + ". Re-check the dates and balances behind your reason against the "
+                              "facts above. Escalate only if none of these can actually be applied; "
+                              "otherwise plan the one that resolves the case.")
+                _stage(cid, "Escalation challenged: the investigation found an eligible remedy",
+                       "Planning", "Resolver Agent")
+                _note(cid, "Orchestrator", f"**Escalation challenged.** Resolver wanted to escalate "
+                                           f"(*{plan.escalation_reason or plan.summary}*) while "
+                                           f"{len(eligible)} eligible remedy(s) were on the table.")
+                plan = crew.resolver(case, it, facts, history, feedback = feedback)
+                continue
             return plan
         errors = actions.validate([a.model_dump() for a in plan.actions]) if plan.decision == "execute" else []
         # Adapting means changing something. Re-proposing an action that was already refused with
