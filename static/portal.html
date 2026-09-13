@@ -92,7 +92,17 @@
     .fchip { background: var(--soft); border-radius: 999px; padding: 3px 10px; }
     .thumbs { align-self: flex-end; display: flex; gap: 6px; flex-wrap: wrap; }
     .thumbs img { width: 74px; height: 74px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
-    .formview { padding: 26px 24px; overflow-y: auto; }
+    .switch { display: flex; gap: 4px; padding: 4px; background: var(--bg); border-radius: 999px; border: 1px solid var(--line); }
+    .switch button { border: 0; background: none; border-radius: 999px; padding: 7px 16px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+    .switch button.on { background: var(--accent); color: #fff; }
+    .switch button:not(.on):hover { color: var(--accent); }
+    .formview { padding: 24px; overflow-y: auto; }
+    .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 620px) { .frow { grid-template-columns: 1fr; } }
+    .fld select { width: 100%; border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; background: var(--bg); }
+    .hint { font-size: 12px; color: var(--ink-3); margin-top: 5px; }
+    .fnote { background: var(--soft); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--ink-2); margin-bottom: 18px; }
+    .fnote b { color: var(--ink); }
     .formview h1 { font-family: Fraunces, Georgia, serif; font-size: 24px; font-weight: 500; margin: 0 0 4px; }
     .formview .lede { color: var(--ink-2); margin: 0 0 20px; font-size: 14px; }
     .fld { margin-bottom: 15px; }
@@ -130,24 +140,57 @@
     </aside>
 
     <section class="chat">
+      <div class="chat-head" id="screenbar">
+        <div class="switch">
+          <button id="tab-chat" class="on">Chat</button>
+          <button id="tab-ticket">New ticket</button>
+        </div>
+      </div>
       <div class="chat-head" id="head" hidden></div>
       <div class="thread" id="thread"></div>
 
       <!-- The non-conversational path. A form has nobody sitting at it, so the case goes
            straight to the agents exactly like an email does - no triage questions. -->
       <form class="formview" id="formview" hidden>
-        <h1>Submit a request</h1>
-        <p class="lede">We'll work on it and email you the outcome. Prefer to talk it through?
-          <a href="#" id="tochat" style="color:var(--accent)">Start a chat instead</a>.</p>
-        <div class="fld"><label for="f-sub">What's this about?</label>
-          <input id="f-sub" name="subject" required placeholder="e.g. My lamp arrived broken"></div>
-        <div class="fld"><label for="f-desc">Tell us more</label>
-          <textarea id="f-desc" name="description" required placeholder="Your order number if you have it, what happened, and what you'd like us to do."></textarea></div>
+        <h1>File a ticket</h1>
+        <p class="lede">For anything you would rather write out than talk through. We work it and
+          email you the outcome.</p>
+        <div class="fnote"><b>No back-and-forth.</b> A ticket goes straight to our resolution
+          agents — so the more you tell us up front, the less likely it comes back with a question.
+          Prefer to be asked? <a href="#" id="tochat" style="color:var(--accent)">Use the chat</a>.</div>
+
+        <div class="fld"><label for="f-sub">Summary</label>
+          <input id="f-sub" required placeholder="e.g. Lamp arrived with a torn shade"></div>
+
+        <div class="frow">
+          <div class="fld"><label for="f-order">Which order?</label>
+            <select id="f-order"><option value="">Loading your orders…</option></select>
+            <div class="hint">Picking one lets us start straight away.</div></div>
+          <div class="fld"><label for="f-topic">What went wrong?</label>
+            <select id="f-topic">
+              <option value="">Choose one…</option>
+              <option value="damaged_item">It arrived damaged</option>
+              <option value="wrong_item">I was sent the wrong thing</option>
+              <option value="where_is_my_order">It hasn't arrived</option>
+              <option value="return">I'd like to return it</option>
+              <option value="refund">I'm chasing a refund</option>
+              <option value="cancel">I want to cancel</option>
+              <option value="other">Something else</option>
+            </select></div>
+        </div>
+
+        <div class="fld"><label for="f-desc">What happened?</label>
+          <textarea id="f-desc" required placeholder="What went wrong, and what you'd like us to do about it."></textarea></div>
+
+        <div class="fld"><label for="f-needby">Do you need this by a date? <span style="font-weight:400;color:var(--ink-3)">(optional)</span></label>
+          <input id="f-needby" type="date"></div>
+
         <div class="fld"><label>Photos or documents</label>
           <div class="drop" id="f-drop">Drag files here or <u>browse</u></div>
           <input type="file" id="f-file" multiple hidden accept="image/*,.pdf,.txt">
           <div class="files" id="f-files" style="padding:6px 0 0"></div></div>
-        <button class="btn" type="submit">Send request</button>
+
+        <button class="btn" type="submit" id="f-submit">Submit ticket</button>
       </form>
       <div class="files" id="files"></div>
       <div class="composer" id="composer">
@@ -200,9 +243,33 @@ const msg = $("#msg");
 msg.addEventListener("input", () => { msg.style.height = "auto"; msg.style.height = Math.min(msg.scrollHeight, 140) + "px"; });
 msg.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
 $("#send").onclick = () => send();
-$("#new").onclick = () => { formMode = false; open = null; lastRender = ""; files = []; showFiles(); render(); msg.focus(); };
-$("#newform").onclick = () => { formMode = true; open = null; lastRender = ""; render(); };
-$("#tochat").onclick = (e) => { e.preventDefault(); formMode = false; lastRender = ""; render(); msg.focus(); };
+function showScreen(which, { keepOpen = false } = {}) {
+  formMode = which === "ticket";
+  $("#tab-chat").classList.toggle("on", !formMode);
+  $("#tab-ticket").classList.toggle("on", formMode);
+  if (!keepOpen) open = null;
+  lastRender = "";
+  render();
+  if (formMode) loadMyOrders(); else msg.focus();
+}
+$("#tab-chat").onclick = () => showScreen("chat");
+$("#tab-ticket").onclick = () => showScreen("ticket");
+$("#new").onclick = () => { files = []; showFiles(); showScreen("chat"); };
+$("#newform").onclick = () => showScreen("ticket");
+$("#tochat").onclick = (e) => { e.preventDefault(); showScreen("chat"); };
+
+/* The order picker is what lets a ticket skip triage: with the order already chosen the agents
+   have everything they need and never have to come back with a question. */
+async function loadMyOrders() {
+  const sel = $("#f-order");
+  try {
+    const orders = await api(`/api/my-orders?email=${encodeURIComponent(me[0])}`);
+    sel.innerHTML = `<option value="">I'm not sure / not about an order</option>`
+      + orders.map((o) => `<option value="${esc(o.id)}">${esc(o.items || o.id)} — ${esc(o.id)} (${esc(o.placed_at)})</option>`).join("");
+  } catch (e) {
+    sel.innerHTML = `<option value="">Could not load your orders</option>`;
+  }
+}
 $("#attach").onclick = () => $("#file").click();
 $("#file").onchange = (e) => { files = [...files, ...e.target.files]; showFiles(); e.target.value = ""; };
 function showFiles() {
@@ -226,13 +293,27 @@ $("#formview").onsubmit = async (e) => {
   if (busy) return;
   busy = true;
   try {
+    // Fold the structured answers into the description. The Intake Agent reads plain language,
+    // so stating the order and the problem in words it already understands beats inventing a
+    // parallel set of fields that only this form knows about.
+    const order = $("#f-order").value, topic = $("#f-topic").selectedOptions[0], needBy = $("#f-needby").value;
+    const extra = [
+      order ? `This is about order ${order}.` : "",
+      topic && topic.value ? `Problem: ${topic.textContent.trim()}.` : "",
+      needBy ? `I need this resolved by ${needBy}.` : "",
+    ].filter(Boolean).join(" ");
+    const description = [$("#f-desc").value.trim(), extra].filter(Boolean).join("\n\n");
+
     const fd = new FormData();
-    fd.append("subject", $("#f-sub").value); fd.append("description", $("#f-desc").value);
+    fd.append("subject", $("#f-sub").value); fd.append("description", description);
     fd.append("customer_email", me[0]); fd.append("customer_name", me[1]); fd.append("channel", "portal");
     formFiles.forEach((f) => fd.append("files", f));
     const c = await api("/api/cases", { method: "POST", body: fd });
-    $("#f-sub").value = ""; $("#f-desc").value = ""; formFiles = []; showFormFiles();
-    formMode = false; open = c.id;
+    $("#f-sub").value = ""; $("#f-desc").value = ""; $("#f-needby").value = "";
+    $("#f-order").selectedIndex = 0; $("#f-topic").selectedIndex = 0;
+    formFiles = []; showFormFiles();
+    formMode = false; $("#tab-chat").classList.add("on"); $("#tab-ticket").classList.remove("on");
+    open = c.id;
   } catch (err) {
     alert("Could not send: " + err.message);
   } finally {

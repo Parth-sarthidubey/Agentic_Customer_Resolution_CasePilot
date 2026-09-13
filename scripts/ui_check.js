@@ -126,33 +126,46 @@ function check(name, ok, detail = "") {
     }
   }
 
-  console.log("\n=== PORTAL: the form path runs straight through ===");
+  console.log("\n=== PORTAL: the ticket screen runs straight through ===");
   {
     const { doc, errors } = await load("/portal", { waitMs: 3500 });
     check("no JS errors", errors.length === 0, errors.join(" | "));
     const sel = doc.querySelector("#me");
     sel.value = [...sel.options].find((o) => o.value.includes("diego.novak")).value;
     sel.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
-    await new Promise((res) => setTimeout(res, 800));
-
-    doc.querySelector("#newform").dispatchEvent(new doc.defaultView.MouseEvent("click", { bubbles: true }));
     await new Promise((res) => setTimeout(res, 900));
-    check("form panel shown", doc.querySelector("#formview").hidden === false);
-    check("chat composer hidden in form mode", doc.querySelector("#composer").hidden === true);
+
+    check("screen switcher present",
+          !!doc.querySelector("#tab-chat") && !!doc.querySelector("#tab-ticket"));
+    doc.querySelector("#tab-ticket").dispatchEvent(new doc.defaultView.MouseEvent("click", { bubbles: true }));
+    await new Promise((res) => setTimeout(res, 1800));
+    check("ticket screen shown", doc.querySelector("#formview").hidden === false);
+    check("chat composer hidden on the ticket screen", doc.querySelector("#composer").hidden === true);
+    check("ticket tab marked active", doc.querySelector("#tab-ticket").classList.contains("on"));
+
+    const orderOpts = [...doc.querySelectorAll("#f-order option")].map((o) => o.value).filter(Boolean);
+    check("order picker lists the customer's own orders", orderOpts.length > 0,
+          orderOpts.join(",") || "none");
+    check("problem picker populated", doc.querySelectorAll("#f-topic option").length > 3);
 
     doc.querySelector("#f-sub").value = "Candle set arrived shattered";
-    doc.querySelector("#f-desc").value = "The candle set from ORD-50010 arrived shattered. Can I get a refund?";
+    doc.querySelector("#f-desc").value = "The candle set arrived shattered. Can I get a refund?";
+    if (orderOpts.length) doc.querySelector("#f-order").value = orderOpts[0];
+    doc.querySelector("#f-topic").value = "damaged_item";
     doc.querySelector("#formview").dispatchEvent(new doc.defaultView.Event("submit", { bubbles: true, cancelable: true }));
     await new Promise((res) => setTimeout(res, 2500));
-    check("form submit returns to the thread", doc.querySelector("#formview").hidden === true);
+    check("submitting returns to the chat screen", doc.querySelector("#formview").hidden === true);
 
     const filed = (await (await fetch(BASE + "/api/cases")).json())
       .find((c) => c.channel === "portal" && c.subject.includes("Candle set"));
-    check("case filed on the portal channel", !!filed, "no portal case found");
+    check("ticket filed on the portal channel", !!filed, "no portal case found");
     if (filed) {
+      const detail = await (await fetch(BASE + "/api/cases/" + filed.id)).json();
+      check("the chosen order reached the case description",
+            /ORD-\d+/.test(detail.case.description), detail.case.description.slice(0, 90));
       await new Promise((res) => setTimeout(res, 10000));
       const after = (await (await fetch(BASE + "/api/cases")).json()).find((c) => c.id === filed.id);
-      check("form case ran without stopping to ask", after.status !== "Waiting on Customer",
+      check("ticket ran without stopping to ask", after.status !== "Waiting on Customer",
             `status=${after.status}`);
     }
   }

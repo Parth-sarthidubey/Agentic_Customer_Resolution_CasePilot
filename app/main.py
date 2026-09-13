@@ -16,7 +16,8 @@ from pydantic import BaseModel
 
 from app import bedrock, config, db, llm, scenarios
 from app.agents import orchestrator
-from app.sandbox import policy, store
+from app.sandbox import policy, services, store
+from app.sandbox.services import ServiceError
 
 logging.basicConfig(level = logging.INFO, format = "%(levelname)s %(name)s %(message)s")
 MAX_UPLOAD = 10 * 1024 * 1024
@@ -228,6 +229,32 @@ def reset() -> dict:
 @app.get("/api/customers")
 def customers() -> list[dict]:
     return store.q("SELECT id, name, email, tier FROM customers ORDER BY id")
+
+
+@app.get("/api/my-orders")
+def my_orders(email: str) -> list[dict]:
+    """The signed-in customer's own orders, for the ticket form's order picker.
+
+    Letting someone choose the order up front is the difference between a ticket the agents can
+    work immediately and one that has to stop and ask. The chat can ask; a form cannot.
+    """
+    found = services.find_customer(email.strip())
+    if not found:
+        return []
+    try:
+        customer = services.get_customer(found[0]["id"])
+    except ServiceError:
+        return []
+    out = []
+    for o in customer.get("orders", [])[:12]:
+        try:
+            full = services.get_order(o["id"])
+            items = ", ".join(i.get("name") or i["sku"] for i in full["items"][:3])
+        except ServiceError:
+            items = ""
+        out.append({"id": o["id"], "placed_at": o["placed_at"], "status": o["status"],
+                    "total": o["total"], "items": items})
+    return out
 
 
 @app.get("/api/systems")
