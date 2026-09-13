@@ -536,3 +536,16 @@ details.tool pre {
 /* A fallback to the rule engine must be impossible to miss - it means the demo is
    showing hardcoded logic, not an agent. */
 .world.fallback{background:var(--bad-tint);border-color:var(--bad-line);border-left-color:var(--bad);color:#9F1239}
+
+/* Where a case arrived from. Chat can be asked a question mid-flight; email and the web form
+   cannot, so the channel changes how the case behaves and belongs on the card. */
+.label.chan { text-transform: capitalize; }
+.label.chan-chat { background: #EEF2FF; color: #4338CA; }
+.label.chan-email { background: #F1F5F9; color: #475569; }
+
+/* The options a triage question put in front of the customer, shown on the agent's own
+   message so the operator can see what was offered without opening the portal. */
+.offered { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 7px;
+           padding-top: 7px; border-top: 1px dashed var(--border); }
+.offered > span:first-child { font-size: 11px; color: var(--ink-3); font-weight: 600;
+                              text-transform: uppercase; letter-spacing: .05em; }

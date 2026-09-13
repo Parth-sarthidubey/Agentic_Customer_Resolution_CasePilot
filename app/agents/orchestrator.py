@@ -70,9 +70,45 @@ def start(cid: int) -> bool:
 
 # --- Main flow -----------------------------------------------------------------------
 
+def _triage_rounds(cid: int) -> int:
+    """How many clarifying questions this case has already asked."""
+    return sum(1 for m in db.messages(cid, include_internal = False)
+               if m["sender"] == "agent" and (m.get("meta") or {}).get("triage"))
+
+
+def _ask(cid: int, it: Intake, round_: int) -> None:
+    """Put one question to the customer and park the case until they answer.
+
+    The choices ride on the message itself so the chat can offer them as buttons. A customer
+    picking "the walnut lamp - ORD-50002" beats them retyping an order number they have to go
+    and find, and it removes the whole class of triage failure where the reply is unparseable.
+    """
+    question = it.clarifying_question or "Could you share your order number so we can help?"
+    meta = {"triage": True, "round": round_, "choices": [c for c in it.choices if c][:5],
+            "missing": it.missing_info}
+    db.add_message(cid, "agent", "CasePilot", question, meta = meta)
+    db.add_event(cid, "Intake Agent", "triage_question", {"question": question, **meta})
+    detail = f" (offered {len(meta['choices'])} options)" if meta["choices"] else ""
+    _stage(cid, f"Asked the customer a clarifying question{detail}", "Waiting on Customer", "Customer")
+
+
+def _needs_triage(it: Intake, case: dict[str, Any]) -> bool:
+    """True when answering is guesswork and one question would settle it.
+
+    Chat is a conversation, so ambiguity the Intake Agent flagged is worth a question even when
+    the ids happen to be bound - "which of your two lamps" changes the whole resolution. A ticket
+    that arrived by email or the web form has nobody sitting there to answer, so it only stops
+    when the case genuinely cannot be worked: no customer, or no order.
+    """
+    if not it.customer_id or not it.order_id:
+        return True
+    if case.get("channel") == "chat" and it.choices and it.clarifying_question:
+        return True
+    return False
+
+
 def _process(cid: int) -> None:
     case = db.get_case(cid)
-    cust_name = (case.get("customer_name") or "there").split()[0]
     _stage(cid, "Intake Agent is reading the case", "Triage", "Intake Agent")
     it = crew.intake(case)
     db.update_case(cid, customer_id = it.customer_id, order_id = it.order_id, goal = it.goal,
@@ -80,11 +116,17 @@ def _process(cid: int) -> None:
     _note(cid, "Intake Agent", f"Goal **{it.goal.replace('_', ' ')}** · {it.priority} · order {it.order_id or '?'}"
                                f"{' · need by ' + it.need_by if it.need_by else ''}. {it.summary}")
 
-    if not it.order_id or not it.customer_id:
-        question = it.clarifying_question or "Could you share your order number so we can help?"
-        db.add_message(cid, "agent", "CasePilot", question)
-        _stage(cid, "Missing information - asked the customer a clarifying question", "Waiting on Customer", "Customer")
-        return
+    if _needs_triage(it, case):
+        round_ = _triage_rounds(cid) + 1
+        if round_ <= config.MAX_TRIAGE_ROUNDS:
+            return _ask(cid, it, round_)
+        # Out of questions. If the case is workable, work it; the Investigator has the same
+        # records and may resolve the ambiguity the customer would not.
+        if not it.customer_id or not it.order_id:
+            return _route(cid, "Support Lead", f"Triage could not identify the "
+                          f"{'customer' if not it.customer_id else 'order'} after "
+                          f"{config.MAX_TRIAGE_ROUNDS} questions.")
+        _stage(cid, f"Proceeding without a clearer answer after {config.MAX_TRIAGE_ROUNDS} questions")
 
     _stage(cid, f"Investigator Agent is checking {it.order_id} across CRM, orders, shipping and policy",
            "Investigating", "Investigator Agent")
@@ -266,6 +308,20 @@ def _finish(cid: int, plan: Plan, results: list[dict[str, Any]], history: list[d
     db.update_case(cid, resolution_type = plan.resolution_type, resolution = reply.internal_note)
     _stage(cid, "Case resolved and verified" if final["passed"] else "Resolved with verification warnings",
            "Resolved", "CasePilot")
+
+
+def _route(cid: int, team: str, reason: str) -> None:
+    """Hand an unworkable case to a human without dressing it up as a failed resolution.
+
+    Triage running out of questions is not the same event as a plan being blocked by policy, and
+    the board should not colour them the same.
+    """
+    db.add_event(cid, "Orchestrator", "routed", {"team": team, "reason": reason})
+    _note(cid, "CasePilot", f"**Routed to {team}.** {reason}")
+    db.add_message(cid, "agent", "CasePilot",
+                   "Thanks for bearing with us - I want to get this right, so I'm passing you to a "
+                   "colleague who can look at your account directly. They'll be in touch shortly.")
+    _stage(cid, f"Routed to {team}: {reason}", "Routed", team)
 
 
 def _escalate(cid: int, team: str, reason: str) -> None:

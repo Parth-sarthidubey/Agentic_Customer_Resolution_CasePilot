@@ -74,6 +74,7 @@ RATE_LIMIT_COOLDOWN_SECONDS = 60
 MAX_AGENT_STEPS = 12          # tool-calling iterations per agent run
 MAX_AUDIT_ROUNDS = 2          # resolver <-> policy auditor revisions
 MAX_REPLANS = 3               # plan -> execute -> verify cycles before escalating
+MAX_TRIAGE_ROUNDS = 3         # clarifying questions before triage gives up and routes to a human
 # Every step resends the whole history, so a fat tool result is paid for again on each later
 # call. Free tiers meter tokens per minute (Groq: 8k/min), which is the real binding limit.
 TOOL_RESULT_MAX_CHARS = 1500

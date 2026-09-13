@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS cases (
 );
 CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT, case_id INTEGER NOT NULL, sender TEXT NOT NULL,
-    author TEXT NOT NULL, body TEXT NOT NULL, internal INTEGER DEFAULT 0, created_at TEXT NOT NULL
+    author TEXT NOT NULL, body TEXT NOT NULL, internal INTEGER DEFAULT 0, created_at TEXT NOT NULL,
+    meta TEXT
 );
 CREATE TABLE IF NOT EXISTS attachments (
     id INTEGER PRIMARY KEY AUTOINCREMENT, case_id INTEGER NOT NULL, filename TEXT, path TEXT,
@@ -59,9 +60,19 @@ def connect() -> sqlite3.Connection:
     return con
 
 
+# Columns added after the first release. SQLite has no "ADD COLUMN IF NOT EXISTS", and a demo
+# that crashes on an old data/ directory is worse than a two-line migration.
+_ADDED_COLUMNS = (("messages", "meta", "TEXT"),)
+
+
 def init() -> None:
     with connect() as con:
         con.executescript(SCHEMA)
+        for table, column, decl in _ADDED_COLUMNS:
+            have = {r["name"] for r in con.execute(f"PRAGMA table_info({table})")}
+            if column not in have:
+                con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+        con.commit()
 
 
 def query(sql: str, params: tuple | list = ()) -> list[dict[str, Any]]:
@@ -116,16 +127,31 @@ def list_cases() -> list[dict[str, Any]]:
 
 # --- Conversation & attachments -------------------------------------------------------
 
-def add_message(case_id: int, sender: str, author: str, body: str, internal: bool = False) -> None:
-    """sender: customer | agent | system.  internal=True -> work note, not visible to the customer."""
-    execute("INSERT INTO messages (case_id, sender, author, body, internal, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (case_id, sender, author, body, int(internal), now_iso()))
+def add_message(case_id: int, sender: str, author: str, body: str, internal: bool = False,
+                meta: dict[str, Any] | None = None) -> int:
+    """sender: customer | agent | system.  internal=True -> work note, not visible to the customer.
+
+    `meta` rides along as JSON for anything the UI needs to render beyond the text - currently the
+    triage choice chips, so a question with options is one message rather than a message plus a
+    parallel store the two could disagree about.
+    """
+    mid = execute("INSERT INTO messages (case_id, sender, author, body, internal, created_at, meta) "
+                  "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                  (case_id, sender, author, body, int(internal), now_iso(),
+                   json.dumps(meta, default = str) if meta else None))
     update_case(case_id)
+    return mid
 
 
 def messages(case_id: int, include_internal: bool = True) -> list[dict[str, Any]]:
     sql = "SELECT * FROM messages WHERE case_id = ?" + ("" if include_internal else " AND internal = 0")
-    return query(sql + " ORDER BY id", (case_id,))
+    rows = query(sql + " ORDER BY id", (case_id,))
+    for r in rows:
+        try:
+            r["meta"] = json.loads(r["meta"]) if r.get("meta") else {}
+        except (TypeError, ValueError):
+            r["meta"] = {}
+    return rows
 
 
 def add_attachment(case_id: int, filename: str, path: str, content_type: str, size: int) -> int:

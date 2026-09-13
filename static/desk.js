@@ -29,12 +29,13 @@ const COLUMNS = [
   { title: "Needs human", st: ["Awaiting Approval", "Waiting on Customer"], c: "#D97706" },
   { title: "Executing", st: ["Executing", "Verifying"], c: "#6366F1" },
   { title: "Resolved", st: ["Resolved"], c: "#059669" },
-  { title: "Escalated", st: ["Escalated"], c: "#E11D48" },
+  { title: "With a human", st: ["Escalated", "Routed"], c: "#E11D48" },
 ];
 const ACTIVE = ["Triage", "Investigating", "Planning", "Policy Review", "Executing", "Verifying"];
 function lz(status) {
   const cls = status === "Resolved" ? "lz-done" : status === "Escalated" ? "lz-danger"
-    : ["Awaiting Approval", "Waiting on Customer"].includes(status) ? "lz-human" : status === "New" ? "lz-new" : "lz-progress";
+    : ["Awaiting Approval", "Waiting on Customer", "Routed"].includes(status) ? "lz-human"
+    : status === "New" ? "lz-new" : "lz-progress";
   return `<span class="lozenge ${cls}">${esc(status)}</span>`;
 }
 const prio = (p) => p ? `<span class="prio ${p}"><i></i>${p}</span>` : `<span class="muted small">—</span>`;
@@ -170,8 +171,8 @@ function renderBoard() {
           const moved = lastCol[c.id] !== undefined && lastCol[c.id] !== ci; lastCol[c.id] = ci;
           return `<div class="card ${moved ? "moved" : ""}" onclick="location.hash='#/case/${c.id}'">
             <div class="c-title">${esc(c.subject)}</div>
-            <div class="c-meta">${c.goal ? `<span class="label">${esc(c.goal.replace(/_/g, " "))}</span>` : ""}${c.order_id ? `<span class="label">${esc(c.order_id)}</span>` : ""}${c.attachments ? `<span class="label">${icon("clip", 11)} ${c.attachments}</span>` : ""}</div>
-            ${c.running ? `<div class="c-status"><span class="typing"><i></i><i></i><i></i></span>${esc(c.assignee)} · ${esc(c.status)}</div>` : ["Awaiting Approval", "Waiting on Customer", "Escalated"].includes(c.status) ? `<div style="margin-top:6px">${lz(c.status)}</div>` : ""}
+            <div class="c-meta"><span class="label chan chan-${esc(c.channel)}">${esc(c.channel)}</span>${c.goal ? `<span class="label">${esc(c.goal.replace(/_/g, " "))}</span>` : ""}${c.order_id ? `<span class="label">${esc(c.order_id)}</span>` : ""}${c.attachments ? `<span class="label">${icon("clip", 11)} ${c.attachments}</span>` : ""}</div>
+            ${c.running ? `<div class="c-status"><span class="typing"><i></i><i></i><i></i></span>${esc(c.assignee)} · ${esc(c.status)}</div>` : ["Awaiting Approval", "Waiting on Customer", "Escalated", "Routed"].includes(c.status) ? `<div style="margin-top:6px">${lz(c.status)}</div>` : ""}
             <div class="c-who">${esc(c.customer_name || "")}</div>
             <div class="c-foot"><span class="c-key">${esc(c.number)}</span>${prio(c.priority)}<span class="spacer"></span>${avatar(c.assignee, c.running ? "working" : "")}</div></div>`;
         }).join("") || `<div class="empty-col">No cases</div>`}</div>`;
@@ -185,7 +186,8 @@ function renderBoard() {
 let queueFilter = "all";
 function renderQueue() {
   const F = { all: ["All", () => true], active: ["Active", (c) => !["Resolved", "Escalated"].includes(c.status)],
-    human: ["Needs human", (c) => ["Awaiting Approval", "Waiting on Customer", "Escalated"].includes(c.status)], resolved: ["Resolved", (c) => c.status === "Resolved"] };
+    human: ["Needs human", (c) => ["Awaiting Approval", "Waiting on Customer", "Escalated", "Routed"].includes(c.status)],
+    resolved: ["Resolved", (c) => c.status === "Resolved"] };
   view.innerHTML = `<div class="breadcrumb">Projects / Kestrel Home Support</div><div class="page-head"><h1>Case queue</h1><div class="spacer"></div>
     ${Object.entries(F).map(([k, [l]]) => `<button class="chip-toggle ${k === queueFilter ? "on" : ""}" data-f="${k}">${l}</button>`).join("")}<input class="search" id="q" placeholder="Search"></div>
     <div class="list-wrap"><div class="list-bar"><b>Cases</b><span class="crumbs">All &gt; <a href="#/queue">${F[queueFilter][0]}</a></span><span class="spacer"></span><span id="n" class="muted"></span></div><div id="tbl"></div></div>`;
@@ -210,7 +212,8 @@ const FLOW = [["Triage", "Intake"], ["Investigating", "Investigation"], ["Planni
   ["Awaiting Approval", "Human approval"], ["Executing", "Execution"], ["Verifying", "Verification"], ["Resolved", "Resolved"]];
 function pipeline(status) {
   const idx = FLOW.findIndex(([s]) => s === status);
-  const extra = status === "Waiting on Customer" ? "Waiting on customer" : status === "Escalated" ? "Escalated" : null;
+  const extra = status === "Waiting on Customer" ? "Waiting on customer"
+    : status === "Escalated" ? "Escalated" : status === "Routed" ? "Routed to a human" : null;
   return `<div class="pipeline">${FLOW.map(([s, l], i) => `<div class="pl ${status === "Resolved" || (idx >= 0 && i < idx) ? "done" : ""} ${i === idx && status !== "Resolved" ? (s === "Awaiting Approval" ? "cur human" : "cur") : ""}"><i></i>${l}</div>`).join("")}
     ${extra ? `<div class="pl cur ${status === "Escalated" ? "bad" : "human"}"><i></i>${extra}</div>` : ""}</div>`;
 }
@@ -265,8 +268,12 @@ function renderCase(id) {
       <div class="thumb">${a.content_type.startsWith("image/") ? `<img src="/api/attachments/${a.id}" alt="">` : icon("file", 22)}</div><div class="a-name">${esc(a.filename)}</div></a>`).join(""));
     const convo = d.messages.filter((m) => !m.internal), notes = d.messages.filter((m) => m.internal);
     $("#n-convo").textContent = convo.length; $("#n-notes").textContent = notes.length;
-    put("convo", $("#convo"), convo.map((m) => `<div class="msg ${m.sender === "agent" ? "me" : ""}">${avatar(m.sender === "customer" ? "Customer" : m.author)}
-      <div class="bubble"><div class="who">${esc(m.author)} <span>· ${ago(m.created_at)}</span></div>${md(m.body)}</div></div>`).join(""));
+    put("convo", $("#convo"), convo.map((m) => {
+      const ch = (m.meta || {}).choices || [];
+      return `<div class="msg ${m.sender === "agent" ? "me" : ""}">${avatar(m.sender === "customer" ? "Customer" : m.author)}
+      <div class="bubble"><div class="who">${esc(m.author)} <span>· ${ago(m.created_at)}</span>${(m.meta || {}).triage ? ` <span class="label">triage Q${esc((m.meta || {}).round || "")}</span>` : ""}</div>${md(m.body)}
+      ${ch.length ? `<div class="offered"><span>Offered:</span>${ch.map((c) => `<span class="label">${esc(c)}</span>`).join("")}</div>` : ""}</div></div>`;
+    }).join(""));
     put("notes", $("#t-notes"), notes.map((m) => `<div class="msg note">${avatar(m.author)}<div class="bubble"><div class="who">${esc(m.author)} <span>· ${ago(m.created_at)}</span></div>${md(m.body)}</div></div>`).join("") || `<div class="muted small">No notes yet.</div>`);
     put("approval", $("#approval"), approvalBanner(d));
     put("side", $("#side"), sidePanel(d));

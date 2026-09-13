@@ -15,7 +15,7 @@ os.environ["CASEPILOT_DATA_DIR"] = tempfile.mkdtemp(prefix = "casepilot_test_")
 
 import pytest  # noqa: E402
 
-from app import db  # noqa: E402
+from app import config, db  # noqa: E402
 from app.agents import orchestrator  # noqa: E402
 from app.sandbox import store  # noqa: E402
 from app import scenarios  # noqa: E402
@@ -120,6 +120,55 @@ def test_ambiguous_case_asks_then_resolves():
     assert c["status"] == "Resolved", trace(c["id"])
     assert c["order_id"] == "ORD-50009"
     assert store.q1("SELECT COUNT(*) n FROM shipments WHERE order_id = 'ORD-50009' AND kind IN ('replacement', 'return')")["n"] == 2
+
+
+def test_chat_triage_offers_choices_and_resolves_on_a_tap():
+    """The chat triage loop, end to end.
+
+    A vague message from a customer with two recent orders must come back as a question that
+    carries selectable options - not a bare "what is your order number?" - and picking one must
+    bind that order and carry the case through to a resolution.
+    """
+    case = db.create_case(subject = "Something is broken", customer_name = "Sofia Berg",
+                          customer_email = "sofia.berg@example.com", channel = "chat",
+                          description = "something I bought is broken and I want it sorted")
+    db.add_message(case["id"], "customer", "Sofia Berg", case["description"])
+    orchestrator.start(case["id"])
+    c = wait(case["id"])
+    assert c["status"] == "Waiting on Customer", trace(c["id"])
+
+    asked = [m for m in db.messages(c["id"], include_internal = False)
+             if m["sender"] == "agent" and (m.get("meta") or {}).get("triage")]
+    assert len(asked) == 1, "expected exactly one triage question"
+    choices = asked[0]["meta"]["choices"]
+    assert len(choices) >= 2, choices
+    assert any("ORD-50009" in ch for ch in choices), choices
+
+    picked = next(ch for ch in choices if "ORD-50009" in ch)
+    db.add_message(c["id"], "customer", "Sofia Berg", picked)
+    assert orchestrator.customer_replied(c["id"])
+    c = wait(c["id"])
+    assert c["status"] == "Resolved", trace(c["id"])
+    assert c["order_id"] == "ORD-50009"
+
+
+def test_triage_gives_up_to_a_human_rather_than_looping():
+    """An unidentifiable customer must reach a person, not keep asking forever."""
+    case = db.create_case(subject = "Help", customer_name = "Nobody",
+                          customer_email = "nobody@nowhere.example", channel = "chat",
+                          description = "my thing is broken")
+    db.add_message(case["id"], "customer", "Nobody", case["description"])
+    for _ in range(config.MAX_TRIAGE_ROUNDS + 1):
+        orchestrator.start(case["id"])
+        c = wait(case["id"])
+        if c["status"] == "Routed":
+            break
+        assert c["status"] == "Waiting on Customer", trace(c["id"])
+        db.add_message(case["id"], "customer", "Nobody", "I still do not know")
+    assert c["status"] == "Routed", trace(c["id"])
+    asked = [m for m in db.messages(case["id"], include_internal = False)
+             if (m.get("meta") or {}).get("triage")]
+    assert len(asked) <= config.MAX_TRIAGE_ROUNDS
 
 
 def test_scenarios_replay_without_a_reset():

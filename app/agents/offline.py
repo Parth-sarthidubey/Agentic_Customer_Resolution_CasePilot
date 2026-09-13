@@ -79,10 +79,22 @@ def intake(tr: Tracer, case: dict[str, Any]) -> Intake:
         elif len(recent) == 1:
             order_id = recent[0]["id"]
     if not order_id:
-        return Intake(goal = goal, customer_id = cust["id"], priority = "P3", missing_info = ["order", "item"],
-                      clarifying_question = "Sorry to hear that! You have a few recent orders with us - which item "
-                                            "is this about, and would you prefer a replacement or a refund?",
-                      summary = f"{cust['name']} reported an issue but the order/item is unclear.")
+        # Offer the recent orders as choices so the rule engine can triage in the chat too - the
+        # customer taps the right one instead of hunting for an order number.
+        options = []
+        for o in recent[:4]:
+            try:
+                full = call_tool(rt.T_GET_ORDER, {"order_id": o["id"]}, tr)
+                names = ", ".join(i.get("name") or i["sku"] for i in full["items"][:2])
+            except Exception:
+                names = ""
+            options.append(f"{names} - {o['id']}" if names else o["id"])
+        return Intake(goal = goal, customer_id = cust["id"], priority = "P3", missing_info = ["order"],
+                      choices = options,
+                      clarifying_question = ("Sorry to hear that! Which of your recent orders is this about?"
+                                             if options else
+                                             "Sorry to hear that! Could you share the order number?"),
+                      summary = f"{cust['name']} reported an issue but the order is unclear.")
     order = call_tool(rt.T_GET_ORDER, {"order_id": order_id}, tr)
     sku = next((i["sku"] for i in order["items"] if any(w in t for w in ITEM_WORDS.get(i["sku"], []))), None)
     if not sku and len(order["items"]) == 1:

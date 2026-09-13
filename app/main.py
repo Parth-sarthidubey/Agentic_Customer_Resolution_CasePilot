@@ -98,6 +98,27 @@ async def create_case(subject: str = Form(...), description: str = Form(...), cu
     return db.get_case(case["id"])
 
 
+@app.post("/api/chat")
+async def chat_start(message: str = Form(...), customer_email: str = Form(...),
+                     customer_name: str = Form(""), files: list[UploadFile] = File(default = [])) -> dict:
+    """Open a case from a single chat message.
+
+    The web form and email both arrive with a subject the customer wrote; a chat message does not,
+    so the first line becomes one. The `chat` channel is what tells the orchestrator there is a
+    person on the other end who can answer a clarifying question - see `_needs_triage`.
+    """
+    first = " ".join(message.strip().split())
+    subject = (first[:70] + "…") if len(first) > 70 else (first or "New chat")
+    case = db.create_case(subject = subject, description = message,
+                          customer_email = customer_email.strip(),
+                          customer_name = customer_name or customer_email.split("@")[0], channel = "chat")
+    db.add_message(case["id"], "customer", case["customer_name"], message)
+    await _save_uploads(case["id"], files)
+    if config.AUTOPILOT:
+        orchestrator.start(case["id"])
+    return db.get_case(case["id"])
+
+
 @app.get("/api/cases/{cid}")
 def get_case(cid: int, customer_view: bool = False) -> dict:
     case = db.get_case(cid)
@@ -130,7 +151,7 @@ async def post_message(cid: int, body: str = Form(...), sender: str = Form("cust
                                                                     else "Agent"), body, internal = internal)
     await _save_uploads(cid, files)
     resumed = orchestrator.customer_replied(cid) if sender == "customer" else False
-    return {"ok": True, "resumed": resumed}
+    return {"ok": True, "resumed": resumed, "status": (db.get_case(cid) or {}).get("status")}
 
 
 @app.post("/api/cases/{cid}/run")

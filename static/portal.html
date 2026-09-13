@@ -5,146 +5,307 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kestrel Home · Help Centre</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    :root { --ink: #2B2118; --ink-2: #6B5E53; --line: #E8DFD5; --bg: #FBF7F2; --card: #FFFFFF; --accent: #B4532A; --accent-2: #8E3F1F; --soft: #F4E9DE; --ok: #2F7D4F; }
+    :root {
+      --ink: #2B2118; --ink-2: #6B5E53; --ink-3: #9A8B7D;
+      --line: #E8DFD5; --bg: #FBF7F2; --card: #FFFFFF;
+      --accent: #B4532A; --accent-2: #8E3F1F; --soft: #F4E9DE;
+      --ok: #2F7D4F; --ok-bg: #E6F3EA; --warn: #9A6B12; --warn-bg: #FBF0DA;
+      --shadow: 0 1px 2px rgba(43,33,24,.04), 0 8px 24px rgba(43,33,24,.06);
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 Inter, system-ui, sans-serif; }
+    html, body { height: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
     [hidden] { display: none !important; }
-    header { background: var(--card); border-bottom: 1px solid var(--line); }
-    .bar { max-width: 1040px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-    .brand { font-family: Fraunces, Georgia, serif; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+    button, input, textarea, select { font: inherit; color: inherit; }
+
+    header { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+    .bar { max-width: 1140px; margin: 0 auto; padding: 13px 20px; display: flex; align-items: center; gap: 14px; }
+    .brand { font-family: Fraunces, Georgia, serif; font-size: 21px; font-weight: 600; letter-spacing: -.01em; }
     .brand span { color: var(--accent); }
     .spacer { flex: 1; }
-    select, input, textarea { font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fff; width: 100%; }
-    select:focus, input:focus, textarea:focus { outline: 2px solid rgba(180, 83, 42, .25); border-color: var(--accent); }
     .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
-    .who select { width: auto; padding: 6px 10px; }
-    .hero { max-width: 1040px; margin: 0 auto; padding: 36px 20px 8px; }
-    .hero h1 { font-family: Fraunces, Georgia, serif; font-size: 34px; font-weight: 500; margin: 0 0 6px; }
-    .hero p { margin: 0; color: var(--ink-2); }
-    main { max-width: 1040px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: 1fr 1.25fr; gap: 20px; align-items: start; }
-    @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
-    .card h2 { font-family: Fraunces, Georgia, serif; font-weight: 500; font-size: 20px; margin: 0 0 14px; }
-    label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 6px; color: var(--ink-2); }
-    .f { margin-bottom: 14px; }
-    textarea { min-height: 120px; resize: vertical; }
-    .btn { font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 10px 20px; cursor: pointer; background: var(--accent); color: #fff; }
-    .btn:hover { background: var(--accent-2); } .btn.ghost { background: var(--soft); color: var(--ink); }
-    .drop { border: 1.5px dashed #D6C6B6; border-radius: 12px; padding: 14px; text-align: center; color: var(--ink-2); font-size: 13px; cursor: pointer; }
-    .drop.over { background: var(--soft); border-color: var(--accent); }
-    .files { font-size: 12px; color: var(--ink-2); margin-top: 6px; }
-    .req { display: block; width: 100%; text-align: left; border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; font: inherit; color: inherit; }
-    .req:hover, .req.on { border-color: var(--accent); background: #FFFCF8; }
-    .req .t { font-weight: 600; } .req .rm { font-size: 12px; color: var(--ink-2); display: flex; gap: 8px; margin-top: 2px; }
-    .pill { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--soft); color: var(--accent-2); }
-    .pill.done { background: #E3F2E8; color: var(--ok); }
-    .thread { display: flex; flex-direction: column; gap: 10px; max-height: 52vh; overflow-y: auto; padding: 4px; }
-    .m { max-width: 85%; padding: 10px 14px; border-radius: 16px; background: var(--soft); white-space: pre-wrap; }
-    .m.me { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
-    .m.them { border-bottom-left-radius: 4px; }
-    .m .n { font-size: 11px; opacity: .75; margin-bottom: 2px; font-weight: 600; }
-    .typing { align-self: flex-start; color: var(--ink-2); font-size: 13px; font-style: italic; }
-    .composer { display: flex; gap: 8px; margin-top: 12px; align-items: flex-end; }
-    .composer textarea { min-height: 48px; }
-    .empty { color: var(--ink-2); font-size: 14px; text-align: center; padding: 24px; }
-    .thumbs { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; } .thumbs img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
-    footer { text-align: center; color: var(--ink-2); font-size: 12px; padding: 30px; }
+    .who select { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; background: #fff; }
+
+    main { max-width: 1140px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: 268px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 880px) { main { grid-template-columns: 1fr; padding: 14px; } .side { order: 2; } }
+
+    .side { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
+    .side h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); margin: 4px 2px 10px; font-weight: 600; }
+    .newbtn { width: 100%; border: 0; border-radius: 12px; padding: 11px 14px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .newbtn:hover { background: var(--accent-2); }
+    .req { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; border-radius: 11px; padding: 10px 11px; margin-bottom: 3px; cursor: pointer; }
+    .req:hover { background: var(--bg); }
+    .req.on { background: #FFFCF8; border-color: #EBD8C9; }
+    .req .t { font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .req .rm { font-size: 11.5px; color: var(--ink-3); display: flex; gap: 7px; margin-top: 3px; align-items: center; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); flex: none; }
+    .dot.live { background: var(--accent); animation: pulse 1.4s infinite; }
+    .dot.done { background: var(--ok); }
+    .dot.wait { background: var(--warn); }
+    @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+
+    .chat { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 74vh; max-height: 84vh; overflow: hidden; }
+    .chat-head { padding: 13px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .chat-head .ttl { font-weight: 600; font-size: 14.5px; }
+    .chat-head .sub { font-size: 12.5px; color: var(--ink-3); }
+    .badge { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 3px 10px; background: var(--soft); color: var(--accent-2); }
+    .badge.done { background: var(--ok-bg); color: var(--ok); }
+    .badge.wait { background: var(--warn-bg); color: var(--warn); }
+
+    .thread { flex: 1; overflow-y: auto; padding: 20px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .m { max-width: 78%; padding: 10px 14px; border-radius: 16px; background: var(--soft); white-space: pre-wrap; word-wrap: break-word; }
+    .m.me { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 5px; }
+    .m.them { align-self: flex-start; background: var(--soft); border-bottom-left-radius: 5px; }
+    .m .n { font-size: 11px; opacity: .7; margin-bottom: 3px; font-weight: 600; letter-spacing: .02em; }
+    .m .tm { font-size: 10.5px; opacity: .55; margin-top: 4px; }
+
+    .chips { align-self: flex-start; display: flex; flex-wrap: wrap; gap: 8px; max-width: 88%; margin: -2px 0 2px; }
+    .chip { border: 1.5px solid #E0CDBD; background: #fff; color: var(--accent-2); border-radius: 999px; padding: 8px 15px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: .12s; }
+    .chip:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .chip:disabled { opacity: .45; cursor: default; }
+    .chips-hint { align-self: flex-start; font-size: 11.5px; color: var(--ink-3); margin-bottom: -4px; }
+
+    .typing { align-self: flex-start; color: var(--ink-2); font-size: 13px; display: flex; align-items: center; gap: 9px; background: var(--bg); border-radius: 14px; padding: 9px 14px; }
+    .tdots { display: inline-flex; gap: 3px; }
+    .tdots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: block; animation: bounce 1.2s infinite; }
+    .tdots i:nth-child(2) { animation-delay: .15s } .tdots i:nth-child(3) { animation-delay: .3s }
+    @keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity: .45 } 30% { transform: translateY(-4px); opacity: 1 } }
+
+    .welcome { margin: auto; text-align: center; max-width: 440px; padding: 20px; }
+    .welcome h1 { font-family: Fraunces, Georgia, serif; font-size: 27px; font-weight: 500; margin: 0 0 8px; }
+    .welcome p { color: var(--ink-2); margin: 0 0 20px; }
+    .starters { display: flex; flex-direction: column; gap: 8px; }
+    .starter { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 11px 15px; text-align: left; cursor: pointer; font-size: 14px; }
+    .starter:hover { border-color: var(--accent); background: #FFFCF8; }
+
+    .composer { border-top: 1px solid var(--line); padding: 12px 14px; display: flex; gap: 9px; align-items: flex-end; background: var(--card); }
+    .composer textarea { flex: 1; border: 1px solid var(--line); border-radius: 14px; padding: 11px 14px; resize: none; min-height: 46px; max-height: 140px; background: var(--bg); }
+    .composer textarea:focus { outline: 2px solid rgba(180,83,42,.2); border-color: var(--accent); background: #fff; }
+    .icon-btn { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; width: 44px; height: 46px; cursor: pointer; display: grid; place-items: center; color: var(--ink-2); flex: none; }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .send { border: 0; background: var(--accent); color: #fff; border-radius: 12px; width: 46px; height: 46px; cursor: pointer; display: grid; place-items: center; flex: none; }
+    .send:hover { background: var(--accent-2); } .send:disabled { opacity: .4; cursor: default; }
+    .files { padding: 0 16px 8px; font-size: 12px; color: var(--ink-2); display: flex; gap: 8px; flex-wrap: wrap; }
+    .fchip { background: var(--soft); border-radius: 999px; padding: 3px 10px; }
+    .thumbs { align-self: flex-end; display: flex; gap: 6px; flex-wrap: wrap; }
+    .thumbs img { width: 74px; height: 74px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+    .closed { text-align: center; font-size: 13px; color: var(--ink-2); padding: 12px 16px; border-top: 1px solid var(--line); background: var(--bg); }
+    footer { text-align: center; color: var(--ink-3); font-size: 12px; padding: 22px; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   </style>
 </head>
 <body>
-  <header><div class="bar"><div class="brand">Kestrel <span>Home</span></div><div class="spacer"></div>
-    <div class="who">Signed in as <select id="me"></select></div></div></header>
-  <section class="hero"><h1>How can we help?</h1><p>Tell us what happened - attach a photo if something arrived damaged. Our support assistant resolves most requests in minutes.</p></section>
+  <header><div class="bar">
+    <div class="brand">Kestrel <span>Home</span></div>
+    <div class="spacer"></div>
+    <div class="who"><label for="me">Signed in as</label><select id="me"></select></div>
+  </div></header>
+
   <main>
-    <div class="card">
-      <h2>Contact support</h2>
-      <form id="f">
-        <div class="f"><label>What's this about?</label><input name="subject" required placeholder="e.g. My lamp arrived broken"></div>
-        <div class="f"><label>Tell us more</label><textarea name="description" required placeholder="Order number if you have it, what happened, and what you'd like us to do."></textarea></div>
-        <div class="f"><label>Photos or documents</label><div class="drop" id="drop">Drag files here or <u>browse</u><input type="file" id="file" multiple hidden accept="image/*,.pdf,.txt"></div><div class="files" id="files"></div></div>
-        <button class="btn">Send request</button>
-      </form>
-    </div>
-    <div class="card">
-      <h2>Your requests</h2>
+    <aside class="side">
+      <button class="newbtn" id="new">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New request
+      </button>
+      <h2 style="margin-top:16px">Your requests</h2>
       <div id="list"></div>
-      <div id="thread-wrap" hidden>
-        <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
-        <div id="thread-head" style="font-weight:600;margin-bottom:8px"></div>
-        <div class="thread" id="thread"></div>
-        <div class="composer"><textarea id="reply" placeholder="Write a reply…"></textarea><button class="btn" id="send">Send</button></div>
+    </aside>
+
+    <section class="chat">
+      <div class="chat-head" id="head" hidden></div>
+      <div class="thread" id="thread"></div>
+      <div class="files" id="files"></div>
+      <div class="composer" id="composer">
+        <button class="icon-btn" id="attach" title="Attach a photo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.2-9.2a3.67 3.67 0 1 1 5.18 5.18l-9.2 9.2a1.83 1.83 0 1 1-2.6-2.6l8.5-8.48"/></svg></button>
+        <input type="file" id="file" multiple hidden accept="image/*,.pdf,.txt">
+        <label for="msg" class="sr">Message</label>
+        <textarea id="msg" placeholder="Describe what happened — we'll take it from there…" rows="1"></textarea>
+        <button class="send" id="send" title="Send"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
       </div>
-    </div>
+      <div class="closed" id="closed" hidden></div>
+    </section>
   </main>
   <footer>Kestrel Home is a fictional retailer used to demonstrate CasePilot. All data is synthetic.</footer>
+
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-let me = null, open = null, files = [];
-async function api(p, o = {}) { const r = await fetch(p, o); if (!r.ok) throw new Error(await r.text()); return r.json(); }
-const FRIENDLY = { "Resolved": "Resolved", "Waiting on Customer": "Needs your reply", "Escalated": "With a specialist", "Awaiting Approval": "Being reviewed" };
+let me = null, open = null, files = [], busy = false, lastRender = "";
+
+const FRIENDLY = {
+  "Resolved": ["Resolved", "done"], "Waiting on Customer": ["Needs your reply", "wait"],
+  "Escalated": ["With a specialist", "wait"], "Routed": ["With a specialist", "wait"],
+  "Awaiting Approval": ["Being reviewed", "wait"],
+};
+const STARTERS = [
+  "My order arrived damaged",
+  "Where is my order?",
+  "I'd like to return something",
+  "I was charged the wrong amount",
+];
+
+async function api(p, o = {}) {
+  const r = await fetch(p, o);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+/* ---------- boot ---------- */
 (async () => {
   const cs = await api("/api/customers");
   $("#me").innerHTML = cs.map((c) => `<option value="${esc(c.email)}|${esc(c.name)}">${esc(c.name)}</option>`).join("");
-  $("#me").onchange = () => { me = $("#me").value.split("|"); open = null; $("#thread-wrap").hidden = true; load(); };
-  me = $("#me").value.split("|"); load(); setInterval(load, 1500);
+  $("#me").onchange = () => { me = $("#me").value.split("|"); open = null; lastRender = ""; render(); };
+  me = $("#me").value.split("|");
+  render();
+  setInterval(() => { if (!busy) render(); }, 1500);
 })();
-const drop = $("#drop");
-drop.onclick = () => $("#file").click();
-$("#file").onchange = (e) => { files = [...files, ...e.target.files]; showFiles(); };
-drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
-drop.ondragleave = () => drop.classList.remove("over");
-drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); files = [...files, ...e.dataTransfer.files]; showFiles(); };
-function showFiles() { $("#files").textContent = files.map((f) => "📎 " + f.name).join("   "); }
-$("#f").onsubmit = async (e) => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  fd.append("customer_email", me[0]); fd.append("customer_name", me[1]); fd.append("channel", "portal");
-  files.forEach((f) => fd.append("files", f));
-  const c = await api("/api/cases", { method: "POST", body: fd });
-  e.target.reset(); files = []; showFiles(); open = c.id; load();
-};
-async function load() {
-  const all = await api("/api/cases");
+
+/* ---------- composer ---------- */
+const msg = $("#msg");
+msg.addEventListener("input", () => { msg.style.height = "auto"; msg.style.height = Math.min(msg.scrollHeight, 140) + "px"; });
+msg.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+$("#send").onclick = () => send();
+$("#new").onclick = () => { open = null; lastRender = ""; files = []; showFiles(); render(); msg.focus(); };
+$("#attach").onclick = () => $("#file").click();
+$("#file").onchange = (e) => { files = [...files, ...e.target.files]; showFiles(); e.target.value = ""; };
+function showFiles() {
+  $("#files").innerHTML = files.map((f, i) => `<span class="fchip">📎 ${esc(f.name)} <button data-i="${i}" style="border:0;background:none;cursor:pointer;color:inherit">×</button></span>`).join("");
+  document.querySelectorAll("#files button").forEach((b) => (b.onclick = () => { files.splice(+b.dataset.i, 1); showFiles(); }));
+}
+
+async function send(text) {
+  const body = (text ?? msg.value).trim();
+  if ((!body && !files.length) || busy) return;
+  busy = true; $("#send").disabled = true;
+  try {
+    const fd = new FormData();
+    files.forEach((f) => fd.append("files", f));
+    if (open) {
+      fd.append("body", body); fd.append("sender", "customer");
+      await api(`/api/cases/${open}/messages`, { method: "POST", body: fd });
+    } else {
+      fd.append("message", body); fd.append("customer_email", me[0]); fd.append("customer_name", me[1]);
+      const c = await api("/api/chat", { method: "POST", body: fd });
+      open = c.id;
+    }
+    msg.value = ""; msg.style.height = "auto"; files = []; showFiles();
+  } catch (err) {
+    alert("Could not send: " + err.message);
+  } finally {
+    busy = false; $("#send").disabled = false; lastRender = ""; render();
+  }
+}
+
+/* ---------- render ---------- */
+async function render() {
+  const all = await api("/api/cases").catch(() => null);
+  if (!all) return;
   const mine = all.filter((c) => c.customer_email === me[0]);
-  $("#list").innerHTML = mine.map((c) => `<button class="req ${c.id === open ? "on" : ""}" data-id="${c.id}"><div class="t">${esc(c.subject)}</div>
-    <div class="rm"><span>${esc(c.number)}</span><span class="pill ${c.status === "Resolved" ? "done" : ""}">${esc(FRIENDLY[c.status] || "In progress")}</span></div></button>`).join("") || `<div class="empty">No requests yet.</div>`;
-  document.querySelectorAll(".req").forEach((b) => (b.onclick = () => { open = +b.dataset.id; load(); }));
-  if (!open) return;
+
+  $("#list").innerHTML = mine.map((c) => {
+    const [label, cls] = FRIENDLY[c.status] || ["In progress", ""];
+    return `<button class="req ${c.id === open ? "on" : ""}" data-id="${c.id}">
+      <div class="t">${esc(c.subject)}</div>
+      <div class="rm"><span class="dot ${c.running ? "live" : cls}"></span>${esc(c.number)} · ${esc(c.running ? "Working…" : label)}</div>
+    </button>`;
+  }).join("") || `<div style="color:var(--ink-3);font-size:13px;padding:6px 2px">No requests yet.</div>`;
+  document.querySelectorAll(".req").forEach((b) => (b.onclick = () => { open = +b.dataset.id; lastRender = ""; render(); }));
+
+  if (!open) return renderWelcome();
+
   const [d, events] = await Promise.all([
     api(`/api/cases/${open}?customer_view=true`),
-    api(`/api/cases/${open}/events`).catch(() => [])
+    api(`/api/cases/${open}/events`).catch(() => []),
   ]);
-  $("#thread-wrap").hidden = false;
-  $("#thread-head").textContent = `${d.case.number} · ${d.case.subject}`;
-  const th = $("#thread"), atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 40;
   const stages = events.filter((e) => e.type === "stage");
-  const rawStatus = stages.length ? stages[stages.length - 1].payload.text : "";
-  const liveStatus = friendlyStageText(rawStatus);
-  th.innerHTML = (d.attachments.length ? `<div class="thumbs">${d.attachments.map((a) => a.content_type.startsWith("image/") ? `<img src="/api/attachments/${a.id}" title="${esc(a.filename)}">` : `<span class="pill">📎 ${esc(a.filename)}</span>`).join("")}</div>` : "") +
-    d.messages.map((m) => `<div class="m ${m.sender === "customer" ? "me" : "them"}"><div class="n">${m.sender === "customer" ? "You" : "Kestrel Support"}</div>${esc(m.body)}</div>`).join("") +
-    (d.running ? `<div class="typing">${esc(liveStatus)}</div>` : "");
-  if (atBottom) th.scrollTop = th.scrollHeight;
+  const live = d.running ? friendlyStage(stages.length ? stages[stages.length - 1].payload.text : "") : "";
+
+  // Only the newest agent question is answerable; older chips are history.
+  const last = d.messages[d.messages.length - 1];
+  const chips = (last && last.sender === "agent" && d.case.status === "Waiting on Customer"
+                 && (last.meta || {}).choices) || [];
+
+  const html = d.messages.map((m) => {
+    const isMine = m.sender === "customer";
+    return `<div class="m ${isMine ? "me" : "them"}">
+      <div class="n">${isMine ? "You" : "Kestrel Support"}</div>${esc(m.body)}
+      <div class="tm">${when(m.created_at)}</div></div>`;
+  }).join("")
+    + (d.attachments.length ? `<div class="thumbs">${d.attachments.map((a) => a.content_type.startsWith("image/")
+        ? `<img src="/api/attachments/${a.id}" alt="${esc(a.filename)}" title="${esc(a.filename)}">`
+        : `<span class="fchip">📎 ${esc(a.filename)}</span>`).join("")}</div>` : "")
+    + (chips.length ? `<div class="chips-hint">Tap one, or type your own answer</div><div class="chips">${
+        chips.map((c) => `<button class="chip" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div>` : "")
+    + (live ? `<div class="typing"><span class="tdots"><i></i><i></i><i></i></span>${esc(live)}</div>` : "");
+
+  const th = $("#thread");
+  const atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 60;
+  if (html !== lastRender) {
+    th.innerHTML = html;
+    lastRender = html;
+    document.querySelectorAll(".chip").forEach((b) => (b.onclick = () => {
+      document.querySelectorAll(".chip").forEach((x) => (x.disabled = true));
+      send(b.dataset.c);
+    }));
+    if (atBottom) th.scrollTop = th.scrollHeight;
+  }
+
+  const [label, cls] = FRIENDLY[d.case.status] || ["In progress", ""];
+  $("#head").hidden = false;
+  $("#head").innerHTML = `<div><div class="ttl">${esc(d.case.subject)}</div>
+    <div class="sub">${esc(d.case.number)}</div></div><div style="flex:1"></div>
+    <span class="badge ${cls}">${esc(d.running ? "Working on it" : label)}</span>`;
+
+  const done = d.case.status === "Resolved";
+  $("#closed").hidden = !done;
+  if (done) $("#closed").textContent = "This request is resolved. Send a message below if you need anything else.";
+  msg.placeholder = d.case.status === "Waiting on Customer"
+    ? "Type your answer…" : "Add anything else we should know…";
 }
-function friendlyStageText(text) {
-  if (!text) return "👋 Hi! We're reviewing your message and looking into your request…";
+
+function renderWelcome() {
+  $("#head").hidden = true;
+  $("#closed").hidden = true;
+  msg.placeholder = "Describe what happened — we'll take it from there…";
+  const html = `<div class="welcome">
+    <h1>How can we help?</h1>
+    <p>Tell us what happened and our support assistant will look into your orders straight away. Attach a photo if something arrived damaged.</p>
+    <div class="starters">${STARTERS.map((s) => `<button class="starter" data-s="${esc(s)}">${esc(s)}</button>`).join("")}</div>
+  </div>`;
+  if (html !== lastRender) {
+    $("#thread").innerHTML = html;
+    lastRender = html;
+    document.querySelectorAll(".starter").forEach((b) => (b.onclick = () => { msg.value = b.dataset.s; msg.focus(); }));
+  }
+}
+
+function when(iso) {
+  if (!iso) return "";
+  const d = new Date(iso), s = (Date.now() - d) / 1000;
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  return d.toLocaleString([], { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" });
+}
+
+function friendlyStage(text) {
+  if (!text) return "Looking into your request…";
   const t = text.toLowerCase();
-  if (t.includes("intake") || t.includes("reading")) return "👋 Hi! We're reviewing your message and looking into your request…";
-  if (t.includes("investigator") || t.includes("checking")) return "🔍 Investigating your order, tracking shipments, and checking details…";
-  if (t.includes("planning") || t.includes("resolver")) return "✍️ Evaluating eligible options and policy guidelines…";
-  if (t.includes("policy auditor") || t.includes("policy")) return "📋 Verifying compliance and policy rules…";
-  if (t.includes("verifying") || t.includes("verifier")) return "✅ Verifying records with our systems…";
-  if (t.includes("communicator") || t.includes("writing")) return "💬 Preparing our detailed response for you…";
-  if (t.includes("escalated")) return "🤝 Forwarding your case to a support specialist…";
-  return `⚡ ${text}`;
+  if (t.includes("intake") || t.includes("reading")) return "Reading your message…";
+  if (t.includes("clarifying")) return "One moment…";
+  if (t.includes("investigator") || t.includes("checking")) return "Checking your order and delivery…";
+  if (t.includes("planning") || t.includes("resolver") || t.includes("re-planning")) return "Working out the best option for you…";
+  if (t.includes("policy")) return "Checking this against our policy…";
+  if (t.includes("executing")) return "Putting it through…";
+  if (t.includes("adapting")) return "That didn't work — trying another way…";
+  if (t.includes("verifying") || t.includes("verifier")) return "Confirming it went through…";
+  if (t.includes("communicator") || t.includes("writing")) return "Writing back to you…";
+  if (t.includes("approval")) return "A colleague is reviewing this…";
+  if (t.includes("escalat") || t.includes("routed")) return "Passing you to a specialist…";
+  return "Working on it…";
 }
-$("#send").onclick = async () => {
-  const body = $("#reply").value.trim(); if (!body || !open) return;
-  const fd = new FormData(); fd.append("body", body); fd.append("sender", "customer");
-  await api(`/api/cases/${open}/messages`, { method: "POST", body: fd }); $("#reply").value = ""; load();
-};
 </script>
 </body>
 </html>
