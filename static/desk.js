@@ -89,6 +89,30 @@ window.addEventListener("hashchange", route);
 
 // ---------- global chrome: status, team, demo menu ----------
 let CASES = [];
+/* The chain can go cold mid-demo - free tiers rate-limit - and a pill read once at page load
+   would still be claiming a live model while every case quietly ran on rules. */
+function updatePill(s) {
+  const p = s.llm.providers || [];
+  const el = $("#model-pill");
+  if (s.llm.mode === "offline" || !p.length) {
+    el.innerHTML = `<span class="dot off"></span><b>Offline rules</b> · no LLM key`;
+    el.title = "No model key configured. Every case runs on the deterministic rule engine.";
+    return;
+  }
+  const live = p.filter((x) => !x.cooling_down);
+  if (!live.length) {
+    el.innerHTML = `<span class="dot off"></span><b>All providers cooling down</b> · on rules`;
+    el.title = "Every provider is rate-limited, so cases are running on the rule engine until one "
+             + "recovers: " + p.map((x) => x.name).join(", ");
+    return;
+  }
+  const cold = p.length - live.length;
+  el.innerHTML = `<span class="dot"></span><b>${esc(live[0].name)}</b> ${esc(live[0].model)}`
+    + (live.length > 1 ? ` → ${live.slice(1).map((x) => esc(x.name)).join(" → ")}` : "")
+    + ` → rules` + (cold ? ` <span class="muted">(${cold} cooling)</span>` : "");
+  el.title = p.map((x) => `${x.name} ${x.model}${x.cooling_down ? " - cooling down" : ""}`).join("\n");
+}
+
 async function refreshGlobal() {
   try { CASES = await api("/api/cases"); } catch (e) { return; }
   $("#queue-count").textContent = CASES.filter((c) => c.status !== "Resolved").length || "";
@@ -97,12 +121,12 @@ async function refreshGlobal() {
     return `<div class="member ${busy.length ? "busy" : ""}">${avatar(n, busy.length ? "working" : "")}
       <div><div class="m-name">${esc(n.replace(" Agent", ""))}</div><div class="m-state">${busy.length ? "Working on " + busy.map((c) => c.number).join(", ") : esc(a.role)}</div></div></div>`;
   }).join("");
+  try { updatePill(await api("/api/status")); } catch (e) { /* leave the last known state up */ }
 }
 (async function chrome() {
   const s = await api("/api/status");
   const p = s.llm.providers;
-  $("#model-pill").innerHTML = s.llm.mode === "offline" ? `<span class="dot off"></span><b>Offline rules</b> · no LLM key`
-    : `<span class="dot"></span><b>${esc(p[0].name)}</b> ${esc(p[0].model)}${p.length > 1 ? ` → ${p.slice(1).map((x) => esc(x.name)).join(" → ")}` : ""} → rules`;
+  updatePill(s);
   $("#lim-refund").textContent = s.limits.auto_refund; $("#lim-credit").textContent = s.limits.auto_credit;
   const sc = await api("/api/scenarios");
   $("#demo-menu").innerHTML = `<div class="dm-head">File a sample customer case</div>` + sc.map((x) =>

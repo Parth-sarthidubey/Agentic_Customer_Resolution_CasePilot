@@ -184,7 +184,12 @@ function check(name, ok, detail = "") {
     check("channel label on cards", doc.querySelectorAll(".label.chan").length > 0);
     const cols = [...doc.querySelectorAll(".column-head")].map((h) => h.textContent.trim().split(" ")[0]);
     check("'With a human' column exists", cols.some((c) => c.startsWith("With")), cols.join(" | "));
-    check("model pill resolved", !/^…$/.test(doc.querySelector("#model-pill").textContent));
+    const pill = doc.querySelector("#model-pill").textContent;
+    check("model pill resolved", !/^…$/.test(pill), pill);
+    // The pill must say what is actually answering, not what was configured - a chain that has
+    // gone cold mid-demo should read as rules, not as a live model.
+    check("model pill states the real backend",
+          /Offline rules|cooling down|rules/.test(pill), pill);
   }
 
   console.log("\n=== AGENT DESK: case detail + triage audit ===");
