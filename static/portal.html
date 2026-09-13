@@ -49,8 +49,12 @@
 
     .chat { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 74vh; max-height: 84vh; overflow: hidden; }
     .chat-head { padding: 13px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .chat-head .ttl { font-weight: 600; font-size: 14.5px; }
-    .chat-head .sub { font-size: 12.5px; color: var(--ink-3); }
+    #head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .caseid { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; }
+    .chat-head .ttl { font-weight: 600; font-size: 13.5px; max-width: 30ch; overflow: hidden;
+                      text-overflow: ellipsis; white-space: nowrap; }
+    .chat-head .sub { font-size: 11.5px; color: var(--ink-3); }
+    @media (max-width: 620px) { .caseid .ttl { max-width: 14ch; } }
     .badge { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 3px 10px; background: var(--soft); color: var(--accent-2); }
     .badge.done { background: var(--ok-bg); color: var(--ok); }
     .badge.wait { background: var(--warn-bg); color: var(--warn); }
@@ -145,8 +149,9 @@
           <button id="tab-chat" class="on">Chat</button>
           <button id="tab-ticket">New ticket</button>
         </div>
+        <div style="flex:1"></div>
+        <div id="head" hidden></div>
       </div>
-      <div class="chat-head" id="head" hidden></div>
       <div class="thread" id="thread"></div>
 
       <!-- The non-conversational path. A form has nobody sitting at it, so the case goes
@@ -406,8 +411,8 @@ async function render() {
 
   const [label, cls] = FRIENDLY[d.case.status] || ["In progress", ""];
   $("#head").hidden = false;
-  $("#head").innerHTML = `<div><div class="ttl">${esc(d.case.subject)}</div>
-    <div class="sub">${esc(d.case.number)}</div></div><div style="flex:1"></div>
+  $("#head").innerHTML = `<div class="caseid"><span class="ttl">${esc(d.case.subject)}</span>
+    <span class="sub">${esc(d.case.number)}</span></div>
     <span class="badge ${cls}">${esc(d.running ? "Working on it" : label)}</span>`;
 
   const done = d.case.status === "Resolved";
